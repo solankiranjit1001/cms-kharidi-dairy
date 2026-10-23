@@ -1,0 +1,11 @@
+{
+  "name": "CMS ખરીદી ડાયરી",
+  "short_name": "ખરીદી ડાયરી",
+  "description": "ગુજરાતી શાકભાજી ખરીદી અને બજાર નોંધ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f8f5",
+  "theme_color": "#087443",
+  "lang": "gu",
+  "icons": []
+}

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="gu">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#087443"><meta name="description" content="CMS ખરીદી ડાયરી - ગુજરાતી શાકભાજી ખરીદી, વેચાણ અને બજાર નોંધ">
+<link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="style.css">
+<title>CMS ખરીદી ડાયરી</title>
+</head>
+<body>
+<header><div class="brandmark">🥬</div><div><h1>CMS ખરીદી ડાયરી</h1><p id="today"></p></div><button class="small ghost" id="exportBtn" aria-label="ડેટા ડાઉનલોડ">⬇️</button></header>
+<main>
+<section id="home" class="screen active">
+<div class="welcome"><h2>નમસ્તે! 👋</h2><p>આજનો હિસાબ સરળતાથી નોંધો.</p></div>
+<div class="tiles">
+<button class="tile blue" data-screen="survey"><span>🔎</span><b>બજાર માહિતી</b><small>ભાવ અને આવક નોંધો</small></button>
+<button class="tile green" data-screen="purchase"><span>🛒</span><b>ખરીદી નોંધો</b><small>કેટલું અને કેટલા ભાવે</small></button>
+<button class="tile orange" data-screen="sale"><span>💰</span><b>વેચાણ નોંધો</b><small>વેચાણ અને આવક</small></button>
+<button class="tile purple" data-screen="stock"><span>📦</span><b>સ્ટોક અને ખર્ચ</b><small>બાકી માલ, ખર્ચ</small></button>
+<button class="tile yellow" data-screen="plan"><span>🧠</span><b>આવતીકાલની યોજના</b><small>ઇતિહાસ પરથી સંકેત</small></button>
+<button class="tile teal" data-screen="history"><span>📚</span><b>જૂનો હિસાબ</b><small>બધી નોંધો જુઓ</small></button>
+</div>
+<div class="summary"><h3>આજનો સારાંશ</h3><div class="stats"><div><small>ખરીદી</small><strong id="sumPurchase">₹0</strong></div><div><small>વેચાણ</small><strong id="sumSale">₹0</strong></div><div><small>નોંધો</small><strong id="sumCount">0</strong></div></div></div>
+<p class="hint">તમારી નોંધો આ ફોનમાં સાચવાય છે. બીજા ફોનમાં જોવા માટે ડેટા બેકઅપ/ઇમ્પોર્ટ જરૂરી છે.</p>
+</section>
+<section id="survey" class="screen"><button class="back" data-screen="home">← પાછા</button><h2>🔎 બજાર માહિતી</h2>
+<form id="surveyForm" class="panel">
+<label>તારીખ<input name="date" type="date" required></label>
+<label>શાકભાજી<select name="veg" class="veg" required></select></label>
+<label>આજનો બજાર ભાવ (₹/કિલો)<input name="rate" type="number" min="0" step=".01" required></label>
+<label>અંદાજિત બજાર સ્ટોક (કિલો)<input name="stock" type="number" min="0" step=".1"></label>
+<label>નવી આવક આવશે?<select name="arrival"><option>ખબર નથી</option><option>હા</option><option>ના</option></select></label>
+<label>આવકનો અંદાજ (કિલો)<input name="arrivalQty" type="number" min="0" step=".1"></label>
+<label>ભાવની સ્થિતિ<select name="trend"><option>સ્થિર</option><option>વધે છે</option><option>ઘટે છે</option><option>ખબર નથી</option></select></label>
+<label>માહિતી ક્યાંથી મળી?<input name="source" placeholder="વેપારીનું નામ / પોતાની નજર"></label>
+<label>વિશ્વાસનું સ્તર<select name="confidence"><option>મધ્યમ</option><option>ઊંચું</option><option>ઓછું</option></select></label>
+<label>નોંધ<textarea name="notes" rows="2"></textarea></label>
+<button class="primary" type="submit">માહિતી સાચવો</button></form></section>
+<section id="purchase" class="screen"><button class="back" data-screen="home">← પાછા</button><h2>🛒 ખરીદી નોંધો</h2>
+<form id="purchaseForm" class="panel transaction"><input type="hidden" name="type" value="ખરીદી">
+<label>તારીખ<input name="date" type="date" required></label><label>શાકભાજી<select name="veg" class="veg" required></select></label>
+<label>ખરીદી ભાવ (₹/કિલો)<input name="rate" type="number" min="0" step=".01" required></label><label>જથ્થો (કિલો)<input name="qty" type="number" min=".01" step=".01" required></label>
+<div class="calc">કુલ ખરીદી <strong class="amount">₹0</strong></div>
+<label>વેપારી / સપ્લાયર<input name="party" placeholder="નામ (વૈકલ્પિક)"></label><label>વધારાનો ખર્ચ (₹)<input name="extra" type="number" min="0" step=".01" value="0"></label>
+<label>નોંધ<textarea name="notes" rows="2"></textarea></label><button class="primary" type="submit">ખરીદી સાચવો</button></form></section>
+<section id="sale" class="screen"><button class="back" data-screen="home">← પાછા</button><h2>💰 વેચાણ નોંધો</h2>
+<form id="saleForm" class="panel transaction"><input type="hidden" name="type" value="વેચાણ"><label>તારીખ<input name="date" type="date" required></label><label>શાકભાજી<select name="veg" class="veg" required></select></label><label>વેચાણ ભાવ (₹/કિલો)<input name="rate" type="number" min="0" step=".01" required></label><label>જથ્થો (કિલો)<input name="qty" type="number" min=".01" step=".01" required></label><div class="calc">કુલ વેચાણ <strong class="amount">₹0</strong></div><label>ગ્રાહક / ખરીદનાર<input name="party"></label><label>નોંધ<textarea name="notes" rows="2"></textarea></label><button class="primary" type="submit">વેચાણ સાચવો</button></form></section>
+<section id="stock" class="screen"><button class="back" data-screen="home">← પાછા</button><h2>📦 સ્ટોક અને ખર્ચ</h2><form id="stockForm" class="panel"><label>તારીખ<input name="date" type="date" required></label><label>શાકભાજી<select name="veg" class="veg" required></select></label><label>આજનો બગાડ (કિલો)<input name="waste" type="number" min="0" step=".1" value="0"></label><label>અન્ય ખર્ચ (₹)<input name="expense" type="number" min="0" step=".01" value="0"></label><label>દિવસના અંતે બાકી સ્ટોક (કિલો)<input name="closing" type="number" min="0" step=".1"></label><label>નોંધ<textarea name="notes" rows="2"></textarea></label><button class="primary" type="submit">સ્ટોક/ખર્ચ સાચવો</button></form></section>
+<section id="plan" class="screen"><button class="back" data-screen="home">← પાછા</button><h2>🧠 આવતીકાલની યોજના</h2><div class="panel"><p>આ સૂચન તમારી નોંધાયેલા ભાવના ઇતિહાસ પર આધારિત છે. તે ખાતરીપૂર્વકની આગાહી નથી.</p><label>શાકભાજી પસંદ કરો<select id="planVeg" class="veg"></select></label><button class="primary" id="analyzeBtn">ઇતિહાસ તપાસો</button><div id="planResult" class="result"></div></div><div class="panel"><h3>ગુજરાતીમાં બોલીને નોંધો</h3><p>ઉદાહરણ: “20 કિલો મરચાં 40 રૂપિયે ખરીદ્યાં.”</p><button class="voice" id="voiceBtn">🎙️ બોલીને નોંધો</button><p id="voiceStatus" class="hint">માઇક્રોફોન માટે પરવાનગી આપો. આ સુવિધા સપોર્ટેડ બ્રાઉઝરમાં જ ચાલશે.</p><div id="voiceResult"></div><button class="primary" id="saveVoice" disabled>આ નોંધ સાચવો</button></div></section>
+<section id="history" class="screen"><button class="back" data-screen="home">← પાછા</button><h2>📚 જૂનો હિસાબ</h2><div class="panel"><label>શાકભાજીથી ફિલ્ટર<select id="filterVeg" class="veg"><option value="">બધાં શાકભાજી</option></select></label><label>નોંધનો પ્રકાર<select id="filterType"><option value="">બધી નોંધો</option><option>ખરીદી</option><option>વેચાણ</option><option>બજાર માહિતી</option><option>સ્ટોક/ખર્ચ</option></select></label><div id="historyList"></div><button class="secondary" id="backupBtn">બેકઅપ ડાઉનલોડ કરો</button><label class="importLabel">બેકઅપ પાછો લાવો (JSON)<input id="importFile" type="file" accept=".json,application/json"></label><button class="danger" id="clearBtn">બધી નોંધો કાઢી નાખો</button></div></section>
+</main>
+<nav class="bottom"><button data-screen="home" class="navactive">🏠<span>હોમ</span></button><button data-screen="history">📚<span>ઇતિહાસ</span></button><button data-screen="plan">🧠<span>યોજના</span></button><button id="navMore">☰<span>વધુ</span></button></nav>
+<div id="toast" role="status"></div>
+<script src="app.js"></script>
+</body></html>
