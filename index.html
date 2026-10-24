@@ -1,1 +1,28 @@
-<!doctype html><html lang="gu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#00652c"><meta name="description" content="ગુજરાતી દૈનિક શાકભાજી ખરીદી, વેચાણ, સ્ટોક અને વેપારી હિસાબ"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="style.css"><title>CMS ખરીદી ડાયરી</title></head><body><header class="top"><div><div class="eyebrow">દૈનિક હિસાબ • ભવનગર</div><h1>🥬 CMS ખરીદી ડાયરી</h1></div><button class="iconbtn" onclick="showPage('settings')" aria-label="સેટિંગ્સ">⚙️</button></header><div class="datebar"><label>તારીખ <input id="workDate" type="date"></label><span id="syncStatus">● આ ડિવાઇસમાં સેવ થાય છે</span></div><nav class="nav" id="nav"><button data-page="home" class="active">🏠 હોમ</button><button data-page="purchase">🧺 ખરીદી</button><button data-page="sales">🛒 વેચાણ</button><button data-page="stock">📦 સ્ટોક</button><button data-page="traders">📒 વેપારી</button><button data-page="reports">🖨️ રિપોર્ટ</button><button data-page="market">📊 બજાર</button><button data-page="history">🗂️ ઇતિહાસ</button><button data-page="plan">🌅 આવતીકાલ</button><button data-page="settings">⚙️ સેટિંગ્સ</button></nav><main id="app"></main><footer>CMS ખરીદી ડાયરી • ડેટા સાચવવા માટે નિયમિત બેકઅપ લો</footer><dialog id="modal"><form method="dialog" id="modalForm"><div id="modalContent"></div><div class="modalactions"><button class="btn light" value="cancel">રદ કરો</button><button class="btn primary" id="modalSave" value="default">સેવ કરો</button></div></form></dialog><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="gu">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#00652c">
+<link rel="icon" href="public/icon.svg" type="image/svg+xml">
+<title>CMS ખરીદી ડાયરી — નવું સરનામું</title>
+<style>
+body{margin:0;font-family:'Noto Sans Gujarati',system-ui,sans-serif;background:#fff8f5;color:#1e1b19;line-height:1.6}
+header{background:#00652c;color:#fff;padding:16px}h1{margin:0;font-size:21px}
+main{max-width:640px;margin:auto;padding:16px}.card{background:#fff;border:1px solid #e5ded9;border-radius:14px;padding:16px;margin-bottom:14px}
+a.btn,button{display:inline-block;border:0;border-radius:12px;padding:14px 18px;font:600 16px inherit;background:#00652c;color:#fff;text-decoration:none;cursor:pointer;margin:6px 0}
+button.light{background:#f4ece8;color:#1e1b19}small{color:#647067}
+</style>
+</head>
+<body>
+<header><h1><img src="public/icon.svg" alt="" width="36" height="36" style="vertical-align:middle;border-radius:9px;margin-right:8px">CMS ખરીદી ડાયરી</h1></header>
+<main>
+<div class="card"><h2>એપ નવા સરનામે ખસી ગઈ છે</h2>
+<p>હવે બધો ડેટા સુરક્ષિત સર્વર પર રહે છે અને પરિવારના દરેક ફોનમાં સરખો દેખાય છે.</p>
+<a class="btn" href="https://cms-kharidi-dairy.vercel.app/">➡️ નવી એપ ખોલો</a></div>
+<div class="card"><h2>આ ફોનમાં જૂની એપનો ડેટા</h2>
+<p id="found">તપાસી રહ્યા છીએ…</p><div id="buttons"></div>
+<small>આ ફાઇલ ડાઉનલોડ કરો, પછી નવી એપમાં "સેટિંગ્સ → જૂની એપનો ડેટા લાવો" માં પસંદ કરો. અહીંથી કોઈ ડેટા કાઢવામાં આવતો નથી.</small></div>
+</main>
+<script src="legacy-export.js"></script>
+</body>
+</html>
