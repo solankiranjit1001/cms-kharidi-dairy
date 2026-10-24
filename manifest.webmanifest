@@ -1,10 +1,1 @@
-{
-  "name": "CMS ખરીદી ડાયરી",
-  "short_name": "ખરીદી ડાયરી",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#f4f8f5",
-  "theme_color": "#087443",
-  "lang": "gu",
-  "icons": []
-}
+{"name":"CMS ખરીદી ડાયરી","short_name":"ખરીદી ડાયરી","start_url":"./","display":"standalone","background_color":"#fff8f5","theme_color":"#00652c","lang":"gu","description":"ગુજરાતી દૈનિક શાકભાજી ખરીદી, વેચાણ અને હિસાબ"}
