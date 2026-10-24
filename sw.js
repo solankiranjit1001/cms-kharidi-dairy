@@ -1,1 +1,9 @@
-const CACHE='cms-kharidi-v4';const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));self.addEventListener('fetch',e=>{if(e.request.method==='GET')e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match('./index.html'))))});
+// Replaces the old cache-first service worker on the GitHub Pages address so phones stop showing
+// the stale offline copy. It clears old caches and unregisters itself. Stored data is NOT touched.
+self.addEventListener('install', function () { self.skipWaiting(); });
+self.addEventListener('activate', function (e) {
+  e.waitUntil(caches.keys().then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); })
+    .then(function () { return self.registration.unregister(); })
+    .then(function () { return self.clients.matchAll(); })
+    .then(function (cs) { cs.forEach(function (c) { c.navigate(c.url); }); }));
+});
