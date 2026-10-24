@@ -1,1 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#00652c"/><circle cx="256" cy="286" r="150" fill="#16a34a"/><path d="M256 136c-30-50-90-60-120-40 40 10 70 40 90 80z" fill="#bbf7d0"/><path d="M256 136c30-50 90-60 120-40-40 10-70 40-90 80z" fill="#86efac"/><text x="256" y="340" font-family="Noto Sans Gujarati, sans-serif" font-size="150" font-weight="800" text-anchor="middle" fill="#fff">ખ</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>CMS ખરીદી ડાયરી</title>
+  <rect width="512" height="512" rx="112" fill="#00652c"/>
+  <!-- open diary -->
+  <path d="M256 388c-46-26-104-34-160-30V150c58-4 114 6 160 34z" fill="#fffaf3"/>
+  <path d="M256 388c46-26 104-34 160-30V150c-58-4-114 6-160 34z" fill="#f3e9dc"/>
+  <path d="M256 184v204" stroke="#c9b9a6" stroke-width="6"/>
+  <g stroke="#d8c8b4" stroke-width="7" stroke-linecap="round" fill="none">
+    <path d="M126 214c36-1 72 5 102 18M126 254c36-1 72 5 102 18M126 294c36-1 72 5 102 18"/>
+  </g>
+  <!-- rupee on right page -->
+  <text x="338" y="300" font-family="Arial, sans-serif" font-size="92" font-weight="700" text-anchor="middle" fill="#00652c">₹</text>
+  <!-- tomato + onion on top -->
+  <circle cx="214" cy="140" r="58" fill="#e23b2e"/>
+  <path d="M214 86c-10-18-30-22-44-14 18 2 30 12 36 26zM214 86c12-16 34-18 46-8-18 0-30 8-38 22z" fill="#16a34a"/>
+  <circle cx="214" cy="88" r="9" fill="#15803d"/>
+  <path d="M310 82c26 18 42 40 42 66 0 30-22 50-50 50s-50-20-50-50c0-26 18-48 42-66 2-12 0-22-6-30 12 6 20 16 22 30z" fill="#b0476a"/>
+  <path d="M302 112c-8 18-10 40-2 82M318 116c8 18 10 40 2 78" stroke="#e7a3bb" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <ellipse cx="196" cy="122" rx="14" ry="9" fill="#ff8a7a" opacity=".7"/>
+</svg>
