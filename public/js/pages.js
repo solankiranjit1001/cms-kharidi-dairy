@@ -3,6 +3,7 @@ import { $, esc, money, num, qty, gDate, weekday, table, metric, dateTime, field
 import { get, put, post, patch, qs } from './api.js';
 import { state, canWrite, isOwner } from './state.js';
 import { TYPE_LABEL } from './forms.js';
+import { famousMarkets, allReference, AGMARKNET_URL } from './market-ref.js';
 
 export function recActions(type, r) {
   if (!r) return '';
@@ -226,6 +227,9 @@ export async function market(root) {
   const vegs = state.meta.vegetables;
   root.innerHTML = `${head('ગુજરાત બજાર ભાવ')}
   <div class="card noprint">${btn('＋ બજાર ભાવ ઉમેરો', 'new', 'primary', 'data-type="market"')}<p class="note">ભાવનગર, નડિયાદ, અમદાવાદ, ગોંડલ, મહુવા, રાજકોટ, સુરત અથવા અન્ય બજાર. સરખામણી ફક્ત તમે સાચવેલા ભાવ પરથી થાય છે; આગાહી નથી.</p></div>
+  <div class="card"><h3 class="sectiontitle">⭐ મુખ્ય શાક માટે જાણીતાં મોટાં બજારો</h3>
+    ${table(['શાક', 'ગુજરાત', 'ભારત'], allReference().map((r) => `<tr><td><b>${esc(r.names[0])}</b></td><td>${r.gujarat.map(esc).join(', ')}</td><td>${r.india.map(esc).join(', ')}</td></tr>`))}
+    <p class="note">આ માત્ર બજારોની સંદર્ભ યાદી છે, ભાવ નથી. આજનો સરકારી ભાવ જોવા: <a href="${AGMARKNET_URL}" target="_blank" rel="noopener">Agmarknet (ભારત સરકાર) ↗</a> — ત્યાં જોયેલો ભાવ અહીં "બજાર ભાવ ઉમેરો" થી સ્રોત "Agmarknet" લખીને નોંધો.</p></div>
   <div class="card"><h3 class="sectiontitle">આજે નોંધેલા ભાવ</h3>${table(['બજાર', 'શાક', 'ભાવ', 'ગ્રેડ', 'સ્રોત', ''], list.map((x) => `<tr><td>${esc(x.market)}</td><td>${esc(x.vegetable)}</td><td><b>${money(x.price)}</b>/${esc(x.unit)}</td><td>${esc(x.grade || '')}</td><td>${esc(x.source || '')} ${by(x)}</td><td>${recActions('market', x)}</td></tr>`))}</div>
   <div class="card"><h3 class="sectiontitle">એક શાકની બજાર સરખામણી અને ઋતુ પ્રમાણે ભાવ</h3>
     <div class="formgrid noprint">${selectField('શાક', 'mveg', [{ value: '', label: '— પસંદ કરો —' }, ...vegs.map((v) => ({ value: v.id, label: v.name }))], '')}
@@ -238,7 +242,9 @@ export async function marketAnalyse() {
   if (!v) return toast('શાક પસંદ કરો', 'warn');
   const a = await get(`/market/analysis${qs({ vegetable_id: v, from: $('#f_mfrom').value, to: $('#f_mto').value })}`);
   const months = ['', 'જાન્યુ', 'ફેબ્રુ', 'માર્ચ', 'એપ્રિલ', 'મે', 'જૂન', 'જુલાઈ', 'ઑગસ્ટ', 'સપ્ટે', 'ઑક્ટો', 'નવે', 'ડિસે'];
-  $('#marketOut').innerHTML = `<h4>બજાર પ્રમાણે (સૌથી સસ્તું ઉપર)</h4>${table(['બજાર', 'સરેરાશ', 'ઓછામાં ઓછો', 'વધુમાં વધુ', 'છેલ્લો ભાવ', 'નોંધ સંખ્યા'],
+  const vname = state.meta.vegetables.find((x) => String(x.id) === String(v))?.name;
+  const fm = famousMarkets(vname);
+  $('#marketOut').innerHTML = `${fm ? `<div class="alert success">⭐ ${esc(vname)} માટે મોટાં બજારો — ગુજરાત: <b>${fm.gujarat.map(esc).join(', ')}</b> • ભારત: <b>${fm.india.map(esc).join(', ')}</b></div>` : ''}<h4>બજાર પ્રમાણે (સૌથી સસ્તું ઉપર)</h4>${table(['બજાર', 'સરેરાશ', 'ઓછામાં ઓછો', 'વધુમાં વધુ', 'છેલ્લો ભાવ', 'નોંધ સંખ્યા'],
       a.byMarket.map((r) => `<tr><td>${esc(r.market)}</td><td><b>${money(r.avg)}</b>/${esc(r.unit)}</td><td>${money(r.min)}</td><td>${money(r.max)}</td><td>${money(r.last_price)} <small>(${gDate(r.last_date)})</small></td><td>${r.n} <span class="pill ${r.n < 3 ? 'amber' : ''}">${esc(r.confidence)}</span></td></tr>`), { empty: 'આ શાકના ભાવ હજુ નોંધાયા નથી' })}
     <h4>મહિના પ્રમાણે વલણ</h4>${table(['મહિનો', 'બજાર', 'સરેરાશ', 'નોંધ'], a.monthly.map((r) => `<tr><td>${esc(r.month)}</td><td>${esc(r.market)}</td><td>${money(r.avg)}</td><td>${r.n}</td></tr>`), { empty: '—' })}
     <h4>ઋતુ પ્રમાણે (બધાં વર્ષ)</h4>${table(['મહિનો', 'સરેરાશ', 'ઓછામાં ઓછો', 'વધુમાં વધુ', 'નોંધ', 'વર્ષ', ''], a.seasonal.map((r) => `<tr><td>${months[r.month]}</td><td>${money(r.avg)}</td><td>${money(r.min)}</td><td>${money(r.max)}</td><td>${r.n}</td><td>${r.years}</td><td><span class="pill ${r.confidence === 'ઓછો ડેટા' ? 'amber' : 'green'}">${esc(r.confidence)}</span></td></tr>`), { empty: '—' })}
