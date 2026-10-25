@@ -7,7 +7,7 @@ import { state, reloadMeta } from './state.js';
 
 export const TYPE_LABEL = {
   purchases: 'ખરીદી', sales: 'વેચાણ', waste: 'બગડેલ માલ', returns: 'વેપારીને પરત', adjustments: 'સ્ટોક સુધારો',
-  payments: 'વેપારી ચુકવણી', trader_adjustments: 'વેપારી ખાતા સુધારો', expenses: 'ખર્ચ', market: 'બજાર ભાવ', plans: 'આવતીકાલનું આયોજન',
+  payments: 'વેપારી ચુકવણી', trader_adjustments: 'વેપારી ખાતા સુધારો', expenses: 'ખર્ચ', market: 'બજાર ભાવ', plans: 'આવતીકાલનું આયોજન', day_sales: 'દિવસનું વેચાણ',
 };
 
 const activeVegs = () => state.meta.vegetables.filter((v) => v.active);
@@ -115,13 +115,13 @@ export async function purchaseForm(rec = null) {
     <div id="lines">${lines.map((l, i) => lineRow(i, l)).join('')}</div>
     <button type="button" class="btn secondary small" data-add-line>＋ બીજું શાક ઉમેરો</button>
     <div class="billtotal">કુલ બિલ: <b data-total>₹0.00</b></div>
-    ${rec ? '' : `<h4 class="formsub">ચુકવણી અને ખર્ચ (વૈકલ્પિક)</h4><div class="formgrid">
-      ${numField('હમણાં ચૂકવેલ રકમ ₹', 'paid_amount', '', { required: false, help: 'ખાલી = ઉધાર' })}
+    ${rec ? '' : `<h4 class="formsub">વેપારીને ચુકવણી અને ખર્ચ (વૈકલ્પિક)</h4><div class="formgrid">
+      ${numField('અત્યારે ચૂકવેલ રકમ ₹', 'paid_amount', '', { required: false, help: 'ખાલી = પૂરું ઉધાર • ઓછી રકમ = બાકી વેપારી ખાતામાં રહેશે' })}
       ${selectField('ચુકવણી માધ્યમ', 'paid_method', state.meta.paymentMethods, 'રોકડ')}
       ${field('રેફરન્સ / UPI', 'paid_reference', { attrs: 'maxlength="80" autocomplete="off"' })}
       ${numField('ટ્રાન્સપોર્ટ / હમાલી ખર્ચ ₹', 'transport_amount', '', { required: false, help: 'અલગ ખર્ચ તરીકે નોંધાશે' })}
       ${selectField('ખર્ચ પ્રકાર', 'transport_category', ['ટ્રાન્સપોર્ટ', 'હમાલી/મજૂરી'], 'ટ્રાન્સપોર્ટ')}
-    </div>`}
+    </div><div class="billtotal">ચૂકવેલ <b data-paid>₹0.00</b> • વેપારીને ચૂકવવાના બાકી: <b class="amber" data-due>₹0.00</b></div>`}
     <div class="formgrid one">${field('નોંધ', 'note', { value: rec?.note || '', attrs: 'maxlength="300"' })}${reasonField(rec)}</div>
     ${vegDatalist()}`;
   const cid = uuid();
@@ -137,6 +137,14 @@ export async function purchaseForm(rec = null) {
           $('[data-lineamt]', row).textContent = money(amt);
         }
         $('[data-total]', form).textContent = money(total);
+        const dueEl = $('[data-due]', form);
+        if (dueEl) {
+          const paid = Number(cleanNum(form.paid_amount.value)) || 0;
+          $('[data-paid]', form).textContent = money(paid);
+          const due = Math.round((total - paid) * 100) / 100;
+          dueEl.textContent = due < 0 ? 'ચૂકવેલ રકમ બિલથી વધુ છે' : money(due);
+          dueEl.className = due < 0 ? 'red' : due === 0 ? 'green' : 'amber';
+        }
       };
       const renumber = () => $$('[data-line]', form).forEach((row, i) => {
         $('label', row).textContent = `શાક ${i + 1}`;

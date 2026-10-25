@@ -7,6 +7,7 @@ import { famousMarkets, allReference, AGMARKNET_URL } from './market-ref.js';
 
 export function recActions(type, r) {
   if (!r) return '';
+  if (type === 'day_sales') return '';
   const b = [];
   if (!r.voided_at && canWrite() && (type !== 'trader_adjustments' || isOwner())) b.push(`<button class="btn light small" data-action="edit" data-type="${type}" data-id="${r.id}">✏️ ફેરફાર</button>`);
   if (!r.voided_at && isOwner()) b.push(`<button class="btn danger small" data-action="void" data-type="${type}" data-id="${r.id}">🗑️ રદ</button>`);
@@ -24,54 +25,76 @@ function head(title, sub = '') {
 }
 
 // ================= HOME =================
+// v6 simple accounting: no item-wise selling, no stock counting. Papa types one sales total per day.
 export async function home(root) {
   const d = await get(`/dashboard${qs({ date: state.date })}`);
   const t = d.totals, y = d.diary;
-  const profit = y.operating_result === null ? '<span class="muted small">ક્લોઝિંગ મૂલ્ય બાકી</span>' : money(y.operating_result);
+  const res = Number(y.result);
   root.innerHTML = `${head('આજની ડાયરી')}
   ${d.warnings.length ? `<div class="alert"><b>⚠️ ધ્યાન આપો</b><ul>${d.warnings.map((w) => `<li>${esc(w.text)}</li>`).join('')}</ul>
-    <div class="actions">${btn('📦 સ્ટોક મેળવો', 'go', 'small light', 'data-page="stock"')}${btn('₹ ક્લોઝિંગ મૂલ્ય', 'closing', 'small light')}</div></div>` : '<div class="alert success">✅ આજે કોઈ બાકી ચેતવણી નથી.</div>'}
+    <div class="actions">${btn('💰 આજનું વેચાણ લખો', 'daysale', 'small primary')}</div></div>` : ''}
+  <div class="card resultcard ${res < 0 ? 'neg' : 'pos'}"><div class="metric">આજનું પરિણામ (વેચાણ − ખરીદી − ખર્ચ)</div>
+    <div class="amount ${res < 0 ? 'red' : 'green'}">${res > 0 ? '+ ' : res < 0 ? '− ' : ''}${money(Math.abs(res))}</div>
+    <div class="sub">${res > 0 ? 'નફો' : res < 0 ? 'નુકસાન' : 'સરભર'}${y.sales_entered ? '' : ' • વેચાણ હજુ લખ્યું નથી'}</div></div>
   <div class="grid">
-    ${metric('આજની ખરીદી', money(t.purchases), 'green', `${t.purchase_count} બિલ${Number(t.returns) ? ` • પરત ${money(t.returns)}` : ''}`)}
-    ${metric('આજનું વેચાણ', money(t.sales), 'blue', `${t.sale_count} એન્ટ્રી`)}
-    ${metric('ખર્ચ', money(t.expenses), 'red')}
-    ${metric('બગડેલ માલ (અંદાજિત ₹)', money(t.waste_value), 'red', `${t.waste_count} એન્ટ્રી • આવકમાં નથી`)}
-    ${metric('વેપારીને ચુકવણી', money(t.payments), 'amber')}
-    ${metric('વેપારીઓની કુલ બાકી', money(d.payable), 'amber', Number(d.advances) ? `એડવાન્સ ${money(d.advances)}` : '')}
-    ${metric('પાછલો વધેલો માલ ₹', money(y.opening_stock_value), '', y.opening_from_date ? gDate(y.opening_from_date) : 'નોંધ નથી')}
-    ${metric('આજનું પરિણામ (નફો/નુકસાન)', profit, Number(y.operating_result) < 0 ? 'red' : 'green')}
+    ${metric('આજની કુલ ખરીદી', money(y.net_purchases), 'green', `${t.purchase_count} બિલ${Number(y.returns) ? ` • પરત ${money(y.returns)} બાદ` : ''}`)}
+    ${metric('આજનું કુલ વેચાણ (ગ્રાહકો પાસેથી મળેલ)', y.sales_entered ? money(y.sales) : '<span class="muted small">હજુ લખ્યું નથી</span>', 'blue',
+      canWrite() ? `<button class="btn light small" data-action="daysale">${y.day_sale === null ? '＋ લખો' : '✏️ બદલો'}</button>` : '')}
+    ${metric('આજે વેપારીને ચૂકવેલ', money(y.payments), 'amber')}
+    ${metric('આજના બિલમાંથી ચૂકવવાના બાકી', money(y.today_bills_due), 'red', `બધા વેપારીની કુલ બાકી: <b>${money(d.payable)}</b>${Number(d.advances) ? ` • એડવાન્સ ${money(d.advances)}` : ''}`)}
+    ${metric('આજનો ખર્ચ', money(y.expenses), 'red', 'ટ્રાન્સપોર્ટ / હમાલી વગેરે')}
   </div>
   ${canWrite() ? `<div class="card noprint"><h3 class="sectiontitle">ઝડપી એન્ટ્રી</h3><div class="quick">
-    <button data-action="new" data-type="purchases">🧺<br>ખરીદી</button><button data-action="new" data-type="sales">🛒<br>વેચાણ</button>
-    <button data-action="new" data-type="waste">♻️<br>બગડેલ માલ</button><button data-action="new" data-type="expenses">💸<br>ખર્ચ</button>
-    <button data-action="new" data-type="payments">💳<br>વેપારી ચુકવણી</button><button data-action="count">📦<br>સ્ટોક ગણો</button>
-    <button data-action="closing">₹<br>વધેલા માલનું મૂલ્ય</button><button data-action="new" data-type="market">📊<br>બજાર ભાવ</button></div></div>` : ''}
+    <button data-action="new" data-type="purchases">🧺<br>ખરીદી</button><button data-action="daysale">💰<br>આજનું વેચાણ</button>
+    <button data-action="new" data-type="payments">💳<br>વેપારી ચુકવણી</button><button data-action="new" data-type="expenses">💸<br>ખર્ચ</button>
+    <button data-action="new" data-type="market">📊<br>બજાર ભાવ</button></div></div>` : ''}
   <div class="grid two">
-    <div class="card"><h3 class="sectiontitle">દૈનિક નાણાકીય સારાંશ</h3>${diaryTable(y)}</div>
-    <div class="card"><h3 class="sectiontitle">હાલનો સ્ટોક</h3>${table(['શાક', 'ગણતરી મુજબ', 'વાસ્તવિક', 'તફાવત'],
-      d.stock.map((s) => `<tr><td>${esc(s.name)}</td><td><b>${qty(s.closing, s.unit)}</b></td><td>${s.physical_qty === null ? '—' : qty(s.physical_qty, s.unit)}</td><td class="${s.diff !== null && Number(s.diff) !== 0 ? 'red' : 'green'}">${s.diff === null ? '—' : num(s.diff)}</td></tr>`),
-      { empty: 'ખરીદી કર્યા પછી સ્ટોક અહીં દેખાશે' })}
-      ${d.traders_due.length ? `<h3 class="sectiontitle" style="margin-top:16px">વેપારી બાકી</h3>${table(['વેપારી', 'બાકી'], d.traders_due.slice(0, 8).map((x) => `<tr><td>${esc(x.name)}</td><td class="${Number(x.balance) > 0 ? 'amber' : 'green'}"><b>${money(x.balance)}</b></td></tr>`))}` : ''}
-    </div>
+    <div class="card"><h3 class="sectiontitle">આજનો હિસાબ</h3>${diaryTable(y)}</div>
+    <div class="card"><h3 class="sectiontitle">વેપારી બાકી (ચૂકવવાના)</h3>${table(['વેપારી', 'બાકી', ''],
+      d.traders_due.map((x) => `<tr><td>${esc(x.name)}</td><td class="${Number(x.balance) > 0 ? 'amber' : 'green'}"><b>${money(x.balance)}</b>${Number(x.balance) < 0 ? ' <small>(એડવાન્સ)</small>' : ''}</td><td>${Number(x.balance) > 0 ? btn('💳 ચુકવો', 'pay', 'secondary small', `data-trader="${x.id}"`) : ''}</td></tr>`),
+      { empty: 'કોઈ વેપારીને ચૂકવવાનું બાકી નથી' })}
+      <p class="balance">કુલ બાકી: ${money(d.payable)}</p></div>
   </div>`;
 }
 
 export function diaryTable(y) {
+  const res = Number(y.result);
   const rows = [
-    ['પાછલા દિવસનો વધેલો માલ (શરૂઆતનો સ્ટોક ₹)', money(y.opening_stock_value)],
-    ['+ કુલ ખરીદી', money(y.purchases)],
-    ['− વેપારીને પરત', money(y.returns)],
-    ['− આજનો વધેલો માલ (ક્લોઝિંગ સ્ટોક ₹)', y.closing_stock_value === null ? '<span class="amber">બાકી</span>' : money(y.closing_stock_value)],
-    ['= વેચાયેલ માલની પડતર', money(y.cogs)],
-    ['કુલ વેચાણ (છૂટ બાદ)', money(y.sales)],
-    ['કુલ નફો (વેચાણ − પડતર)', money(y.gross_profit)],
+    [`કુલ વેચાણ (ગ્રાહકો પાસેથી મળેલ)${y.day_sale_note ? ` <small class="muted">${esc(y.day_sale_note)}</small>` : ''}`, y.sales_entered ? money(y.sales) : '<span class="amber">બાકી</span>'],
+    ['− કુલ ખરીદી' + (Number(y.returns) ? ` <small class="muted">(${money(y.purchases)} − પરત ${money(y.returns)})</small>` : ''), money(y.net_purchases)],
     ['− ખર્ચ', money(y.expenses)],
-    ['<b>આજનું પરિણામ</b>', `<b class="${Number(y.operating_result) < 0 ? 'red' : 'green'}">${money(y.operating_result)}</b>`],
+    ['<b>= આજનું પરિણામ</b>', `<b class="${res < 0 ? 'red' : 'green'}">${money(y.result)}</b>`],
   ];
   return `${table(['વિગત', 'રકમ'], rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`), { cls: 'diary' })}
-    ${y.pending.length ? `<p class="note amber">${y.pending.map(esc).join('<br>')}</p>` : ''}
-    <p class="note">બગડેલ માલ (${money(y.waste_value)}) પડતરમાં આવી ગયો છે — ફરી બાદ કર્યો નથી. વેપારીને ચુકવણી (${money(y.payments)}) નફામાંથી બાદ થતી નથી.</p>
-    <div class="cashbox"><b>રોકડ હિલચાલ (નફો નથી):</b> આવક ${money(y.cash_in)} − ચુકવણી/ખર્ચ ${money(y.cash_out)} = <b>${money(y.net_cash)}</b></div>`;
+    <div class="cashbox"><b>વેપારી ચુકવણી:</b> આજે ચૂકવેલ ${money(y.payments)} • આજના બિલમાંથી બાકી <b>${money(y.today_bills_due)}</b></div>
+    <p class="note">વેપારીને ચુકવણી પરિણામમાંથી ફરી બાદ થતી નથી — ખરીદી પહેલેથી બાદ થઈ ગઈ છે. ચુકવણીથી માત્ર વેપારીની બાકી ઘટે છે.</p>`;
+}
+
+export async function daySaleDialog() {
+  const d = await get(`/dashboard${qs({ date: state.date })}`);
+  const y = d.diary;
+  const has = y.day_sale !== null;
+  return openModal({
+    title: `💰 વેચાણ — ${gDate(state.date)}`,
+    body: `<p class="note">દિવસના અંતે ગ્રાહકો પાસેથી મળેલ <b>કુલ રકમ</b> લખો (રોકડ + UPI બધું મળીને). શાક પ્રમાણે અલગ લખવાની જરૂર નથી.</p>
+      <div class="formgrid one">${numField('આજનું કુલ વેચાણ ₹', 'amount', has ? Number(y.day_sale) : '')}
+      ${field('નોંધ (વૈકલ્પિક)', 'note', { value: y.day_sale_note || '', attrs: 'maxlength="200"' })}
+      ${has ? field('ફેરફારનું કારણ (રકમ બદલો તો ફરજિયાત)', 'reason', { attrs: 'maxlength="200"' }) : ''}</div>
+      <div class="billtotal">ખરીદી ${money(y.net_purchases)} • ખર્ચ ${money(y.expenses)} → પરિણામ: <b data-res>—</b></div>`,
+    onOpen(form) {
+      const calc = () => {
+        const s = Number(String(form.amount.value).replace(/,/g, '')) || 0;
+        const r = Math.round((s - Number(y.net_purchases) - Number(y.expenses)) * 100) / 100;
+        const el = $('[data-res]', form); el.textContent = money(r); el.className = r < 0 ? 'red' : 'green';
+      };
+      form.addEventListener('input', calc); calc();
+    },
+    async onSubmit(form) {
+      await put(`/daysale/${state.date}`, { amount: form.amount.value, note: form.note.value, reason: form.reason?.value });
+      toast('આજનું વેચાણ સેવ થયું');
+      return true;
+    },
+  });
 }
 
 // ================= PURCHASE =================
@@ -80,7 +103,7 @@ export async function purchase(root) {
   const total = list.reduce((a, p) => a + Number(p.total_amount), 0);
   root.innerHTML = `${head('શાકભાજી ખરીદી')}
   <div class="card noprint"><div class="actions">${btn('＋ નવી ખરીદી', 'new', 'primary', 'data-type="purchases"')}${btn('↩️ વેપારીને પરત', 'new', 'light', 'data-type="returns"')}</div>
-  <p class="note">એક બિલમાં અનેક શાક ઉમેરી શકાય. રકમ = જથ્થો × દર (સર્વર ગણે છે). હમણાં ચૂકવેલ રકમ અને ટ્રાન્સપોર્ટ ખર્ચ અલગ નોંધાય છે.</p></div>
+  <p class="note">એક બિલમાં અનેક શાક ઉમેરી શકાય. રકમ = જથ્થો × દર (સર્વર ગણે છે). બિલ ₹5,000 અને ચૂકવેલ ₹4,000 હોય તો ₹1,000 વેપારીના ખાતામાં બાકી રહે છે — પછી "ચુકવો" થી ચૂકવી શકાય.</p></div>
   <div class="grid">${metric('આજની ખરીદી', money(total), 'green')}${metric('બિલ', list.length)}${metric('બધા બાકી બિલ', unpaid.length, 'amber')}${metric('બાકી બિલની રકમ', money(unpaid.reduce((a, p) => a + Number(p.due_amount), 0)), 'amber')}</div>
   <div class="card"><h3 class="sectiontitle">આજનાં ખરીદી બિલ</h3>${list.length ? list.map(purchaseCard).join('') : '<div class="empty">આજે હજુ ખરીદી નથી</div>'}</div>
   ${unpaid.length ? `<div class="card"><h3 class="sectiontitle">બાકી / આંશિક ચૂકવેલ બિલ</h3>${table(['તારીખ', 'વેપારી', 'બિલ', 'કુલ', 'ચૂકવેલ', 'બાકી', ''],
@@ -261,7 +284,7 @@ export async function plan(root) {
 
 // ================= HISTORY =================
 export async function historyPage(root) {
-  const types = [{ value: '', label: 'બધા પ્રકાર' }, ...Object.entries(TYPE_LABEL).filter(([k]) => k !== 'plans').map(([value, label]) => ({ value, label }))];
+  const types = [{ value: '', label: 'બધા પ્રકાર' }, ...Object.entries(TYPE_LABEL).filter(([k]) => !['plans', 'sales', 'waste', 'adjustments'].includes(k)).map(([value, label]) => ({ value, label }))];
   root.innerHTML = `${head('ઇતિહાસ અને સુધારા')}
   <div class="card noprint"><div class="formgrid">${field('શોધો (શાક / વેપારી / નોંધ)', 'hq', { attrs: 'autocomplete="off"' })}
     ${selectField('પ્રકાર', 'htype', types, '')}${field('તારીખથી', 'hfrom', { type: 'date' })}${field('તારીખ સુધી', 'hto', { type: 'date' })}

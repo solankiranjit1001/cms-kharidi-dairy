@@ -10,8 +10,6 @@ import * as S from './settings.js';
 const PAGES = {
   home: { label: '🏠 હોમ', render: P.home },
   purchase: { label: '🧺 ખરીદી', render: P.purchase },
-  sales: { label: '🛒 વેચાણ', render: P.sales },
-  stock: { label: '📦 સ્ટોક', render: P.stock },
   traders: { label: '📒 વેપારી', render: P.traders },
   expenses: { label: '💸 ખર્ચ', render: P.expenses },
   reports: { label: '🖨️ રિપોર્ટ', render: reports },
@@ -119,6 +117,7 @@ const ACTIONS = {
   audit: (el) => P.auditDialog(el.dataset.type, el.dataset.id),
   count: () => reloadAfter(P.countDialog()),
   closing: () => reloadAfter(P.closingDialog()),
+  daysale: () => reloadAfter(P.daySaleDialog()),
   statement: (el) => P.statementDialog(el.dataset.id),
   'trader-new': () => reloadAfter(P.traderDialog().then(async (r) => { if (r) await reloadMeta(); return r; })),
   async 'trader-edit'(el) {
