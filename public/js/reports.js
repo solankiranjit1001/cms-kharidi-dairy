@@ -74,8 +74,8 @@ export async function showReport() {
   const sum = (k) => list.reduce((a, x) => a + Number(x[k] || 0), 0);
   let body = '';
   if (type === 'purchases') {
-    body = table(['તારીખ', 'વેપારી', 'શાક', 'જથ્થો', 'દર', 'રકમ', 'બિલ કુલ', 'સ્થિતિ'], list.flatMap((p) => p.lines.map((l, i) => `<tr><td>${i ? '' : gDate(p.entry_date)}</td><td>${i ? '' : esc(p.trader_name)}</td><td>${esc(l.vegetable)}</td><td>${qty(l.qty, l.unit)}</td><td>${money(l.rate)}</td><td>${money(l.amount)}</td><td>${i ? '' : `<b>${money(p.total_amount)}</b>`}</td><td>${i ? '' : esc(p.status)}</td></tr>`)))
-      + `<p class="balance">કુલ ખરીદી: ${money(sum('total_amount'))} • બાકી: ${money(sum('due_amount'))}</p>`;
+    body = table(['તારીખ', 'વેપારી', 'શાક', 'મુદ્દા', 'જથ્થો', 'દર', '6% કમિશન', 'રકમ', 'બિલ કુલ', 'સ્થિતિ'], list.flatMap((p) => p.lines.map((l, i) => `<tr><td>${i ? '' : gDate(p.entry_date)}</td><td>${i ? '' : esc(p.trader_name)}</td><td>${esc(l.vegetable)}</td><td>${l.mudda ?? ''}</td><td>${qty(l.qty, l.unit)}</td><td>${money(l.rate)}</td><td>${l.commission_excl ? money(l.commission_amount) : 'ભેગું'}</td><td>${money(l.amount)}</td><td>${i ? '' : `<b>${money(p.total_amount)}</b>`}</td><td>${i ? '' : esc(p.status)}</td></tr>`)))
+      + `<p class="balance">કુલ ખરીદી: ${money(sum('total_amount'))} • કુલ મુદ્દા: ${sum('total_mudda')} • ઉમેરેલ કમિશન: ${money(sum('total_commission'))} • બાકી: ${money(sum('due_amount'))}</p>`;
   } else if (type === 'sales') {
     body = table(['તારીખ', 'શાક', 'જથ્થો', 'દર', 'છૂટ', 'રકમ', 'ચુકવણી'], list.map((x) => `<tr><td>${gDate(x.entry_date)}</td><td>${esc(x.vegetable)}</td><td>${qty(x.qty, x.veg_unit)}</td><td>${money(x.rate)}</td><td>${Number(x.discount) ? money(x.discount) : ''}</td><td>${money(x.amount)}</td><td>${esc(x.payment_mode)}</td></tr>`))
       + `<p class="balance">કુલ વેચાણ: ${money(sum('amount'))}</p>`;
@@ -97,15 +97,15 @@ export async function diarySheet(date) {
     get(`/records/market?date=${d}`), get(`/records/payments?date=${d}`)]);
   const y = dash.diary;
   const blank = (n, cols) => Array.from({ length: Math.max(0, n) }, () => `<tr class="blankrow">${'<td>&nbsp;</td>'.repeat(cols)}</tr>`).join('');
-  const purRows = pur.flatMap((p) => p.lines.map((l) => `<tr><td>${esc(l.vegetable)}</td><td>${esc(p.trader_name)}</td><td>${num(l.qty)} ${esc(l.unit)}</td><td>${money(l.rate)}</td><td>${money(l.amount)}</td></tr>`));
+  const purRows = pur.flatMap((p) => p.lines.map((l) => `<tr><td>${esc(l.vegetable)}</td><td>${esc(p.trader_name)}</td><td>${l.mudda ?? ''}</td><td>${num(l.qty)} ${esc(l.unit)}</td><td>${money(l.rate)}${l.commission_excl ? ' +6%' : ''}</td><td>${money(l.amount)}</td></tr>`));
   const payRows = pays.map((x) => `<tr><td>${esc(x.trader_name)}</td><td>${esc(x.method)}</td><td>${money(x.amount)}</td></tr>`);
   const mkRows = mkt.slice(0, 10).map((x) => `<tr><td>${esc(x.market)}</td><td>${esc(x.vegetable)}</td><td>${money(x.price)}/${esc(x.unit)}</td><td>${esc(x.grade || '')}</td></tr>`);
   return `<div class="diarysheet">
     <div class="ds-head"><div><b>CMS દૈનિક શાકભાજી ખરીદી ડાયરી — ભાવનગર</b></div><div>તારીખ: <b>${gDate(date)}</b> • ${weekday(date)}</div></div>
     <div class="ds-cols">
       <section class="ds-part"><h4>ભાગ A — ખરીદી</h4>
-        <table><thead><tr><th>શાક</th><th>વેપારી</th><th>જથ્થો</th><th>દર</th><th>રકમ</th></tr></thead><tbody>${purRows.join('')}${blank(10 - purRows.length, 5)}</tbody>
-        <tfoot><tr><td colspan="4">કુલ ખરીદી</td><td><b>${money(y.purchases)}</b></td></tr></tfoot></table>
+        <table><thead><tr><th>શાક</th><th>વેપારી</th><th>મુદ્દા</th><th>જથ્થો</th><th>દર</th><th>રકમ</th></tr></thead><tbody>${purRows.join('')}${blank(10 - purRows.length, 6)}</tbody>
+        <tfoot><tr><td colspan="5">કુલ ખરીદી</td><td><b>${money(y.purchases)}</b></td></tr></tfoot></table>
         <h4>ભાગ B — વેચાણ</h4>
         <table><tbody><tr><td>ગ્રાહકો પાસેથી મળેલ કુલ રકમ</td><td><b>${y.sales_entered ? money(y.sales) : '&nbsp;'}</b></td></tr></tbody></table>
       </section>

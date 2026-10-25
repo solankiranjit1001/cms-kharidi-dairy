@@ -112,7 +112,8 @@ export async function purchase(root) {
 export function purchaseCard(p) {
   const pill = p.status === 'ચૂકવેલ' ? 'green' : p.status === 'આંશિક' ? 'amber' : 'red';
   return `<div class="record${p.voided_at ? ' voided' : ''}"><div class="recmain"><strong>${esc(p.trader_name)} <span class="muted">#${p.id}${p.bill_no ? ' • બિલ ' + esc(p.bill_no) : ''}</span>${voidPill(p)}</strong>
-    <div class="lines">${p.lines.map((l) => `<span>${esc(l.vegetable)} ${qty(l.qty, l.unit)} × ${money(l.rate)} = <b>${money(l.amount)}</b></span>`).join('')}</div>
+    <div class="lines">${p.lines.map((l) => `<span>${esc(l.vegetable)} ${qty(l.qty, l.unit)}${l.mudda !== null && l.mudda !== undefined ? ` (${l.mudda} મુદ્દા)` : ''} × ${money(l.rate)}${l.commission_excl ? ` + 6% ${money(l.commission_amount)}` : ' <small class="muted">કમિશન ભેગું</small>'} = <b>${money(l.amount)}</b></span>`).join('')}</div>
+    ${p.total_mudda ? `<small>કુલ મુદ્દા: <b>${p.total_mudda}</b></small>` : ''}
     ${p.note ? `<small>${esc(p.note)}</small>` : ''} ${by(p)}</div>
     <div class="recside"><div class="balance">${money(p.total_amount)}</div><span class="pill ${pill}">${p.status}${p.status !== 'ચૂકવેલ' ? ' • બાકી ' + money(p.due_amount) : ''}</span>${recActions('purchases', p)}</div></div>`;
 }
