@@ -47,9 +47,6 @@ test('dry run changes nothing; commit imports; second import adds no duplicates'
   assert.deepEqual(r.data.inserted, {});
   assert.equal(r.data.already_imported.purchase, 2);
   assert.equal((await o.get('/records/purchases')).data.length, 2);
-  // dashboard warns about the negative stock until it is fixed
-  const d = (await o.get('/dashboard?date=2026-09-02')).data;
-  assert.ok(d.warnings.some((w) => w.kind === 'negative'));
 });
 
 test('V1 records array import, and possible duplicates of hand-typed entries are flagged', async () => {

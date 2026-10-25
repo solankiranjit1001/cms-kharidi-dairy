@@ -63,7 +63,7 @@ test('sales cannot exceed stock (also for backdated entries); waste reduces stoc
   assert.equal(Number(av.canTake), 24);
   const dash = (await o.get(`/dashboard?date=${D2}`)).data;
   assert.equal(dash.totals.sales, '1590.00'); // waste not counted as sales
-  const st = dash.stock.find((s) => s.name === 'ટામેટાં');
+  const st = (await o.get(`/stock?date=${D2}`)).data.rows.find((s) => s.name === 'ટામેટાં');
   assert.equal(Number(st.opening), 110); assert.equal(Number(st.sold), 80); assert.equal(Number(st.wasted), 6); assert.equal(Number(st.closing), 24);
 });
 
@@ -119,36 +119,26 @@ test('daily diary formulas: closing value is typed; waste and payments are not d
   await o.post('/records/sales', { client_id: uuid(), entry_date: D3, vegetable_id: onion, qty: '60', rate: '15' }); // 900
   await o.post('/records/waste', { client_id: uuid(), entry_date: D3, vegetable_id: onion, qty: '5', reason: 'સડેલ' });
   await o.post('/records/expenses', { client_id: uuid(), entry_date: D3, category: 'હમાલી/મજૂરી', amount: '100' });
+  // v6 simple accounting: result = sales − buying − expenses (old per-item sales still count for their day)
   let d = (await o.get(`/dashboard?date=${D3}`)).data;
-  assert.equal(d.diary.gross_profit, null);
-  assert.ok(d.warnings.some((w) => w.kind === 'closing'));
-  const stock = (await o.get(`/stock?date=${D3}`)).data;
-  assert.ok(Number(stock.suggested_value) > 0);
+  assert.equal(d.diary.sales, '900.00');
+  assert.equal(d.diary.net_purchases, '1000.00');
+  assert.equal(d.diary.result, '-200.00'); // 900 − 1000 − 100
+  assert.equal(d.diary.payments, '1000.00'); // paid, not deducted again
+  // the old closing-value endpoint still works (kept for old data) and needs a reason to change
   let r = await o.put(`/closing/${D3}`, { closing_stock_value: '3350' });
   assert.equal(r.status, 200);
-  d = (await o.get(`/dashboard?date=${D3}`)).data;
-  // COGS = 3000 + 1000 − 3350 = 650 ; gross = 900 − 650 = 250 ; operating = 250 − 100 = 150
-  assert.equal(d.diary.opening_stock_value, '3000.00');
-  assert.equal(d.diary.cogs, '650.00');
-  assert.equal(d.diary.gross_profit, '250.00');
-  assert.equal(d.diary.operating_result, '150.00');
-  assert.equal(d.diary.net_cash, '-200.00'); // 900 in − 1000 paid − 100 expense; cash ≠ profit
-  // changing a saved closing needs a reason
   r = await o.put(`/closing/${D3}`, { closing_stock_value: '3300' }); assert.equal(r.status, 400);
-  r = await o.put(`/closing/${D3}`, { closing_stock_value: '3300', reason: 'ફરી ગણ્યું' }); assert.equal(r.status, 200);
   const sum = (await o.get(`/reports/summary?from=${D1}&to=${D3}`)).data;
   assert.equal(sum.days.length, 3);
-  assert.equal(sum.totals.closing_stock_value, '3300.00');
 });
 
 test('physical stock count records the difference without overwriting the ledger', async () => {
   const onion = (await o.get('/meta')).data.vegetables.find((v) => v.name === 'ડુંગળી').id;
   let r = await o.post('/stock/counts', { count_date: D3, items: [{ vegetable_id: onion, physical_qty: '33' }] });
   assert.equal(r.status, 200);
-  const d = (await o.get(`/dashboard?date=${D3}`)).data;
-  const row = d.stock.find((s) => s.name === 'ડુંગળી');
+  const row = (await o.get(`/stock?date=${D3}`)).data.rows.find((s) => s.name === 'ડુંગળી');
   assert.equal(Number(row.closing), 35); assert.equal(Number(row.diff), -2);
-  assert.ok(d.warnings.some((w) => w.kind === 'count_diff'));
   r = await o.post('/records/adjustments', { client_id: uuid(), entry_date: D3, vegetable_id: onion, qty: '-2' });
   assert.equal(r.status, 400); // reason mandatory
   r = await o.post('/records/adjustments', { client_id: uuid(), entry_date: D3, vegetable_id: onion, qty: '-2', reason: 'સુકાઈને વજન ઘટ્યું' });

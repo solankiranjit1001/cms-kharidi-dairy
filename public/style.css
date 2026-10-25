@@ -166,3 +166,6 @@ dialog::backdrop{background:#201b18a8}
   body.print-modal dialog{position:static;box-shadow:none;max-height:none;width:100%;padding:0;overflow:visible}
   body.print-modal .modalactions{display:none}
 }
+/* v6: big result card on home */
+.resultcard{text-align:center;border-width:2px}.resultcard.pos{border-color:#1a7f37}.resultcard.neg{border-color:#c62828}
+.resultcard .amount{font-size:34px}

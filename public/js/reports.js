@@ -8,9 +8,6 @@ const REPORTS = [
   { value: 'diary', label: 'દૈનિક ડાયરી (A4 આડું પ્રિન્ટ)' },
   { value: 'summary', label: 'નફો-નુકસાન / સમયગાળાનો સારાંશ' },
   { value: 'purchases', label: 'ખરીદી રિપોર્ટ' },
-  { value: 'sales', label: 'વેચાણ રિપોર્ટ' },
-  { value: 'waste', label: 'બગડેલ માલ રિપોર્ટ' },
-  { value: 'stock', label: 'સ્ટોક રિપોર્ટ (એક દિવસ)' },
   { value: 'expenses', label: 'ખર્ચ રિપોર્ટ' },
   { value: 'traders', label: 'વેપારી બાકી રિપોર્ટ' },
 ];
@@ -47,17 +44,16 @@ export async function showReport() {
   if (type === 'summary') {
     const s = await get(`/reports/summary${qs({ from, to })}`);
     const T = s.totals;
+    const cls = (v) => (Number(v) < 0 ? 'red' : 'green');
     out.innerHTML = `<div class="card report">${title('નફો-નુકસાન સારાંશ', range)}
       ${table(['વિગત', 'રકમ'], [
-        ['શરૂઆતનો સ્ટોક ₹ (આગલા ક્લોઝિંગ પરથી)', money(T.opening_stock_value)], ['+ ખરીદી', money(T.purchases)], ['− પરત', money(T.returns)],
-        ['− અંતિમ દિવસનો ક્લોઝિંગ સ્ટોક ₹', T.closing_stock_value === null ? '<span class="amber">અંતિમ દિવસનું મૂલ્ય બાકી</span>' : money(T.closing_stock_value)],
-        ['= વેચાયેલ માલની પડતર', money(T.cogs)], ['વેચાણ', money(T.sales)], ['કુલ નફો', money(T.gross_profit)], ['− ખર્ચ', money(T.expenses)],
-        ['<b>ચોખ્ખું પરિણામ</b>', `<b>${money(T.operating_result)}</b>`], ['(માહિતી) બગડેલ માલ અંદાજિત ₹', money(T.waste_value)], ['(માહિતી) વેપારીને ચુકવણી', money(T.payments)],
+        ['કુલ વેચાણ (ગ્રાહકો પાસેથી મળેલ)', money(T.sales)], ['− કુલ ખરીદી (પરત બાદ)', money(T.net_purchases)], ['− ખર્ચ', money(T.expenses)],
+        ['<b>= ચોખ્ખું પરિણામ</b>', `<b class="${cls(T.result)}">${money(T.result)}</b>`], ['(માહિતી) વેપારીને ચૂકવેલ', money(T.payments)],
       ].map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`), { cls: 'diary' })}
-      <h3>દિવસ પ્રમાણે</h3>${table(['તારીખ', 'ખરીદી', 'પરત', 'વેચાણ', 'ખર્ચ', 'બગાડ ₹', 'ક્લોઝિંગ ₹', 'પડતર', 'પરિણામ'],
-        s.days.map((d) => `<tr><td>${gDate(d.d)}</td><td>${money(d.purchases)}</td><td>${Number(d.returns) ? money(d.returns) : ''}</td><td>${money(d.sales)}</td><td>${money(d.expenses)}</td><td>${money(d.waste_value)}</td><td>${d.closing === null ? '<span class="amber">બાકી</span>' : money(d.closing)}</td><td>${money(d.cogs)}</td><td class="${Number(d.operating_result) < 0 ? 'red' : ''}">${money(d.operating_result)}</td></tr>`))}
-      <h3>શાક પ્રમાણે જથ્થો</h3>${table(['શાક', 'ખરીદી', 'વેચાણ', 'બગાડ', 'પરત', 'સુધારો'], s.vegetables.map((v) => `<tr><td>${esc(v.name)}</td><td>${qty(v.purchased, v.unit)}</td><td>${qty(v.sold, v.unit)}</td><td>${qty(v.wasted, v.unit)}</td><td>${qty(v.returned, v.unit)}</td><td>${num(v.adjusted)}</td></tr>`))}
-      <p class="note">પડતર = શરૂઆતનો સ્ટોક + ખરીદી − પરત − ક્લોઝિંગ સ્ટોક. બગડેલ માલ પડતરમાં આવી જાય છે. વેપારીને ચુકવણી રોકડ હિલચાલ છે, ખર્ચ નથી.</p></div>`;
+      <h3>દિવસ પ્રમાણે</h3>${table(['તારીખ', 'વેચાણ', 'ખરીદી', 'પરત', 'ખર્ચ', 'પરિણામ', 'વેપારીને ચૂકવેલ'],
+        s.days.map((d) => `<tr><td>${gDate(d.d)}</td><td>${d.day_sale === null && Number(d.sales) === 0 ? '<span class="amber">બાકી</span>' : money(d.sales)}</td><td>${money(d.purchases)}</td><td>${Number(d.returns) ? money(d.returns) : ''}</td><td>${money(d.expenses)}</td><td class="${cls(d.result)}"><b>${money(d.result)}</b></td><td>${money(d.payments)}</td></tr>`))}
+      <h3>શાક પ્રમાણે ખરીદી</h3>${table(['શાક', 'જથ્થો', 'રકમ', 'સરેરાશ દર'], s.vegetables.map((v) => `<tr><td>${esc(v.name)}</td><td>${qty(v.qty, v.unit)}</td><td>${money(v.amount)}</td><td>${money(v.avg_rate)}</td></tr>`))}
+      <p class="note">પરિણામ = વેચાણ − ખરીદી − ખર્ચ. વેપારીને ચુકવણી પરિણામમાંથી ફરી બાદ થતી નથી.</p></div>`;
     return;
   }
   if (type === 'stock') {
@@ -93,38 +89,37 @@ export async function showReport() {
   out.innerHTML = `<div class="card report">${title(REPORTS.find((r) => r.value === type).label, range)}${body}${list.length >= 1000 ? '<p class="amber">પહેલી 1000 એન્ટ્રી — સમયગાળો નાનો કરો.</p>' : ''}</div>`;
 }
 
-/** Printable daily diary: two-part A4 landscape sheet with 10 market-survey rows and 5 review rows. */
+/** Printable daily diary: A4 landscape — purchases, day's sales total, expenses, market survey and the day's result. */
 export async function diarySheet(date) {
   const d = encodeURIComponent(date);
-  const [dash, pur, sal, wst, exp, mkt] = await Promise.all([
-    get(`/dashboard?date=${d}`), get(`/records/purchases?date=${d}`), get(`/records/sales?date=${d}`),
-    get(`/records/waste?date=${d}`), get(`/records/expenses?date=${d}`), get(`/records/market?date=${d}`)]);
+  const [dash, pur, exp, mkt, pays] = await Promise.all([
+    get(`/dashboard?date=${d}`), get(`/records/purchases?date=${d}`), get(`/records/expenses?date=${d}`),
+    get(`/records/market?date=${d}`), get(`/records/payments?date=${d}`)]);
+  const y = dash.diary;
   const blank = (n, cols) => Array.from({ length: Math.max(0, n) }, () => `<tr class="blankrow">${'<td>&nbsp;</td>'.repeat(cols)}</tr>`).join('');
   const purRows = pur.flatMap((p) => p.lines.map((l) => `<tr><td>${esc(l.vegetable)}</td><td>${esc(p.trader_name)}</td><td>${num(l.qty)} ${esc(l.unit)}</td><td>${money(l.rate)}</td><td>${money(l.amount)}</td></tr>`));
-  const salRows = sal.map((x) => `<tr><td>${esc(x.vegetable)}</td><td>${num(x.qty)} ${esc(x.veg_unit)}</td><td>${money(x.rate)}</td><td>${money(x.amount)}</td><td>${esc(x.payment_mode)}</td></tr>`);
+  const payRows = pays.map((x) => `<tr><td>${esc(x.trader_name)}</td><td>${esc(x.method)}</td><td>${money(x.amount)}</td></tr>`);
   const mkRows = mkt.slice(0, 10).map((x) => `<tr><td>${esc(x.market)}</td><td>${esc(x.vegetable)}</td><td>${money(x.price)}/${esc(x.unit)}</td><td>${esc(x.grade || '')}</td></tr>`);
   return `<div class="diarysheet">
     <div class="ds-head"><div><b>CMS દૈનિક શાકભાજી ખરીદી ડાયરી — ભાવનગર</b></div><div>તારીખ: <b>${gDate(date)}</b> • ${weekday(date)}</div></div>
     <div class="ds-cols">
       <section class="ds-part"><h4>ભાગ A — ખરીદી</h4>
-        <table><thead><tr><th>શાક</th><th>વેપારી</th><th>જથ્થો</th><th>દર</th><th>રકમ</th></tr></thead><tbody>${purRows.join('')}${blank(6 - purRows.length, 5)}</tbody>
-        <tfoot><tr><td colspan="4">કુલ ખરીદી</td><td><b>${money(dash.totals.purchases)}</b></td></tr></tfoot></table>
+        <table><thead><tr><th>શાક</th><th>વેપારી</th><th>જથ્થો</th><th>દર</th><th>રકમ</th></tr></thead><tbody>${purRows.join('')}${blank(10 - purRows.length, 5)}</tbody>
+        <tfoot><tr><td colspan="4">કુલ ખરીદી</td><td><b>${money(y.purchases)}</b></td></tr></tfoot></table>
         <h4>ભાગ B — વેચાણ</h4>
-        <table><thead><tr><th>શાક</th><th>જથ્થો</th><th>દર</th><th>રકમ</th><th>ચુકવણી</th></tr></thead><tbody>${salRows.join('')}${blank(6 - salRows.length, 5)}</tbody>
-        <tfoot><tr><td colspan="3">કુલ વેચાણ</td><td colspan="2"><b>${money(dash.totals.sales)}</b></td></tr></tfoot></table>
+        <table><tbody><tr><td>ગ્રાહકો પાસેથી મળેલ કુલ રકમ</td><td><b>${y.sales_entered ? money(y.sales) : '&nbsp;'}</b></td></tr></tbody></table>
       </section>
-      <section class="ds-part"><h4>ભાગ C — સ્ટોક</h4>
-        <table><thead><tr><th>શાક</th><th>શરૂઆત</th><th>આવક</th><th>વેચાણ</th><th>બગાડ</th><th>બાકી</th><th>વાસ્તવિક</th></tr></thead>
-        <tbody>${dash.stock.map((s) => `<tr><td>${esc(s.name)}</td><td>${num(s.opening)}</td><td>${num(s.purchased)}</td><td>${num(s.sold)}</td><td>${num(s.wasted)}</td><td><b>${num(s.closing)}</b></td><td>${s.physical_qty === null ? '' : num(s.physical_qty)}</td></tr>`).join('')}${blank(5 - dash.stock.length, 7)}</tbody></table>
-        <h4>ભાગ E — ખર્ચ / બગડેલ માલ</h4>
+      <section class="ds-part"><h4>ભાગ C — વેપારીને ચુકવણી</h4>
+        <table><thead><tr><th>વેપારી</th><th>માધ્યમ</th><th>રકમ</th></tr></thead><tbody>${payRows.join('')}${blank(4 - payRows.length, 3)}</tbody>
+        <tfoot><tr><td colspan="2">આજે ચૂકવેલ • આજના બિલમાંથી બાકી ${money(y.today_bills_due)}</td><td><b>${money(y.payments)}</b></td></tr></tfoot></table>
+        <h4>ભાગ E — ખર્ચ</h4>
         <table><thead><tr><th>વિગત</th><th>નોંધ</th><th>રકમ</th></tr></thead><tbody>
           ${exp.map((x) => `<tr><td>${esc(x.category)}</td><td>${esc(x.note || '')}</td><td>${money(x.amount)}</td></tr>`).join('')}
-          ${wst.map((x) => `<tr><td>બગાડ: ${esc(x.vegetable)}</td><td>${num(x.qty)} ${esc(x.veg_unit)} • ${esc(x.reason)}</td><td>${money(x.est_value)}</td></tr>`).join('')}
           ${blank(3, 3)}</tbody></table>
         <h4>ભાગ D — બજાર સર્વે (10 પંક્તિ)</h4>
         <table><thead><tr><th>બજાર</th><th>શાક</th><th>ભાવ</th><th>ગ્રેડ</th></tr></thead><tbody>${mkRows.join('')}${blank(10 - mkRows.length, 4)}</tbody></table>
       </section>
-      <section class="ds-part"><h4>આજનો હિસાબ</h4>${diaryTable(dash.diary)}
+      <section class="ds-part"><h4>આજનો હિસાબ</h4>${diaryTable(y)}
         <h4>સમીક્ષા (5 પંક્તિ)</h4>
         <table class="review"><tbody>${blank(5, 1)}</tbody></table>
         <div class="signs"><span>લખનાર: ____________</span><span>ચકાસનાર: ____________</span></div>
