@@ -53,3 +53,24 @@ test('day result, partial payment due, and one sales total per day', async () =>
   const h = (await o.get(`/history?type=day_sales`)).data;
   assert.equal(h.length, 1);
 });
+
+test('purchase lines: mudda count and 6% commission ભેગું (incl) / અલગ (excl)', async () => {
+  const r = await o.post('/records/purchases', { client_id: uuid(), entry_date: '2026-10-22', trader: 'મહેશભાઈ',
+    lines: [{ vegetable: 'મરચાં', qty: '50', rate: '60', mudda: '5', commission: 'incl' },
+            { vegetable: 'ડુંગળી', qty: '200', rate: '10.25', mudda: '4', commission: 'excl' }] });
+  assert.equal(r.status, 201, JSON.stringify(r.data));
+  const [a, b] = r.data.lines;
+  assert.equal(Number(a.amount), 3000); assert.equal(Number(a.commission_amount), 0); assert.equal(a.mudda, 5);
+  assert.equal(Number(b.base_amount), 2050); assert.equal(Number(b.commission_amount), 123); assert.equal(Number(b.amount), 2173);
+  assert.equal(r.data.total_amount, '5173.00');
+  assert.equal(r.data.total_mudda, 9);
+  // bad mudda refused
+  const bad = await o.post('/records/purchases', { client_id: uuid(), entry_date: '2026-10-22', trader: 'મહેશભાઈ',
+    lines: [{ vegetable: 'મરચાં', qty: '1', rate: '1', mudda: '2.5' }] });
+  assert.equal(bad.status, 400);
+  // edit: switch to incl removes the commission; reason required
+  const e = await o.patch(`/records/purchases/${r.data.id}`, { entry_date: '2026-10-22', trader_id: r.data.trader_id, reason: 'કમિશન ભેગું હતું',
+    lines: [{ vegetable_id: a.vegetable_id, qty: '50', rate: '60', mudda: 5 }, { vegetable_id: b.vegetable_id, qty: '200', rate: '10.25', mudda: 4, commission: 'incl' }] });
+  assert.equal(e.status, 200, JSON.stringify(e.data));
+  assert.equal(e.data.total_amount, '5050.00');
+});
