@@ -88,7 +88,7 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:12px}
 .recside{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right}
 .balance{font-size:20px;font-weight:800}
 .billtotal{text-align:right;font-size:18px;margin:10px 0}
-.lineitem{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:8px;align-items:end;padding:10px;border:1px dashed var(--line);border-radius:12px;margin-bottom:8px;background:#fffdfb}
+.lineitem{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.6fr 1.2fr auto;gap:8px;align-items:end;padding:10px;border:1px dashed var(--line);border-radius:12px;margin-bottom:8px;background:#fffdfb}
 .lineamt output{display:block;min-height:48px;padding:12px 0;font-weight:700}
 .newveg{display:flex;gap:6px;align-items:center;margin-top:4px}
 .newveg select{min-height:38px;padding:4px 8px;width:auto}
@@ -132,6 +132,7 @@ dialog::backdrop{background:#201b18a8}
   .quick{grid-template-columns:repeat(2,minmax(0,1fr))}
   .lineitem{grid-template-columns:1fr 1fr;}
   .lineitem .veginput{grid-column:1/-1}
+  .lineitem .lineamt{grid-column:1/-1}
   .lineitem .removeline{justify-self:end}
   .record{flex-direction:column}.recside{align-items:flex-start;text-align:left}
   .datebar{padding:8px 12px}
