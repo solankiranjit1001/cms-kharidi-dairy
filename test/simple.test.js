@@ -74,3 +74,23 @@ test('purchase lines: mudda count and 6% commission ભેગું (incl) / અ
   assert.equal(e.status, 200, JSON.stringify(e.data));
   assert.equal(e.data.total_amount, '5050.00');
 });
+
+test('round off: every entry is rounded to whole rupees (₹0.50 and above goes up)', async () => {
+  const r = await o.post('/records/purchases', { client_id: uuid(), entry_date: '2026-10-23', trader: 'મહેશભાઈ',
+    lines: [{ vegetable: 'મરચાં', qty: '12.5', rate: '41.30' },                       // 516.25 → 516
+            { vegetable: 'ડુંગળી', qty: '33', rate: '10.25', commission: 'excl' }],   // 338.25 → 338; 6% = 20.28 → 20 → 358
+    paid_amount: '300.60', transport_amount: '49.50' });
+  assert.equal(r.status, 201, JSON.stringify(r.data));
+  assert.equal(Number(r.data.lines[0].amount), 516);
+  assert.equal(Number(r.data.lines[1].base_amount), 338);
+  assert.equal(Number(r.data.lines[1].commission_amount), 20);
+  assert.equal(r.data.total_amount, '874.00');
+  assert.equal(r.data.paid_amount, '301.00');
+  const ex = (await o.get('/records/expenses?date=2026-10-23')).data;
+  assert.equal(ex[0].amount, '50.00');
+  const tid = r.data.trader_id;
+  const p = await o.post('/records/payments', { client_id: uuid(), entry_date: '2026-10-23', trader_id: tid, amount: '99.49', method: 'રોકડ' });
+  assert.equal(p.data.amount, '99.00');
+  const s = await o.put('/daysale/2026-10-23', { amount: '1234.5' });
+  assert.equal(s.data.amount, '1235.00');
+});

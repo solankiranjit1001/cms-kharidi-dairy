@@ -116,7 +116,7 @@ export async function purchaseForm(rec = null) {
     <h4 class="formsub">શાકભાજી</h4>
     <div id="lines">${lines.map((l, i) => lineRow(i, l)).join('')}</div>
     <button type="button" class="btn secondary small" data-add-line>＋ બીજું શાક ઉમેરો</button>
-    <div class="billtotal">કુલ બિલ: <b data-total>₹0.00</b><span data-mudda></span></div>
+    <div class="billtotal">કુલ બિલ: <b data-total>₹0.00</b><span data-mudda></span><br><small class="muted">દરેક રકમ પૂરા રૂપિયામાં રાઉન્ડ ઑફ થાય છે (50 પૈસા કે વધુ = ઉપર)</small></div>
     ${rec ? '' : `<h4 class="formsub">વેપારીને ચુકવણી અને ખર્ચ (વૈકલ્પિક)</h4><div class="formgrid">
       ${numField('અત્યારે ચૂકવેલ રકમ ₹', 'paid_amount', '', { required: false, help: 'ખાલી = પૂરું ઉધાર • ઓછી રકમ = બાકી વેપારી ખાતામાં રહેશે' })}
       ${selectField('ચુકવણી માધ્યમ', 'paid_method', state.meta.paymentMethods, 'રોકડ')}
@@ -135,10 +135,11 @@ export async function purchaseForm(rec = null) {
         let total = 0, mudda = 0;
         for (const row of $$('[data-line]', form)) {
           const q = Number(cleanNum($('[name^=qty_]', row).value)) || 0, r = Number(cleanNum($('[name^=rate_]', row).value)) || 0;
-          const base = Math.round(q * r * 100) / 100;
+          // round off to whole rupees, same rule as the server (₹0.50 and above goes up)
+          const base = Math.round(Math.round(q * r * 100) / 100);
           const excl = $('[name^=comm_]', row).value === 'excl';
-          const comm = excl ? Math.round(base * 6) / 100 : 0;
-          const amt = Math.round((base + comm) * 100) / 100; total += amt;
+          const comm = excl ? Math.round(base * 6 / 100) : 0;
+          const amt = base + comm; total += amt;
           $('[data-lineamt]', row).textContent = money(amt);
           $('[data-linecomm]', row).textContent = excl ? `${money(base)} + 6% ${money(comm)}` : '';
           mudda += Number(cleanNum($('[name^=mudda_]', row).value)) || 0;
@@ -147,7 +148,7 @@ export async function purchaseForm(rec = null) {
         $('[data-mudda]', form).textContent = mudda ? ` • કુલ મુદ્દા: ${mudda}` : '';
         const dueEl = $('[data-due]', form);
         if (dueEl) {
-          const paid = Number(cleanNum(form.paid_amount.value)) || 0;
+          const paid = Math.round(Number(cleanNum(form.paid_amount.value)) || 0);
           $('[data-paid]', form).textContent = money(paid);
           const due = Math.round((total - paid) * 100) / 100;
           dueEl.textContent = due < 0 ? 'ચૂકવેલ રકમ બિલથી વધુ છે' : money(due);
@@ -230,8 +231,8 @@ export async function saleForm(rec = null) {
     title: rec ? `વેચાણ #${rec.id} માં ફેરફાર` : '🛒 વેચાણ ઉમેરો', body,
     onOpen(form) {
       const recalc = () => {
-        const g = Math.round((Number(cleanNum(form.qty.value)) || 0) * (Number(cleanNum(form.rate.value)) || 0) * 100) / 100;
-        $('[data-total]', form).textContent = money(g - (Number(cleanNum(form.discount.value)) || 0));
+        const g = Math.round((Number(cleanNum(form.qty.value)) || 0) * (Number(cleanNum(form.rate.value)) || 0));
+        $('[data-total]', form).textContent = money(g - Math.round(Number(cleanNum(form.discount.value)) || 0));
       };
       const avail = async () => {
         const span = $('[data-avail]', form);

@@ -83,7 +83,7 @@ export async function daySaleDialog() {
       <div class="billtotal">ખરીદી ${money(y.net_purchases)} • ખર્ચ ${money(y.expenses)} → પરિણામ: <b data-res>—</b></div>`,
     onOpen(form) {
       const calc = () => {
-        const s = Number(String(form.amount.value).replace(/,/g, '')) || 0;
+        const s = Math.round(Number(String(form.amount.value).replace(/,/g, '')) || 0);
         const r = Math.round((s - Number(y.net_purchases) - Number(y.expenses)) * 100) / 100;
         const el = $('[data-res]', form); el.textContent = money(r); el.className = r < 0 ? 'red' : 'green';
       };
