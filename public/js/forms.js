@@ -99,7 +99,9 @@ function lineRow(i, l = {}) {
     ${vegInput(`veg_${i}`, v ? v.name : l.vegetable || '', { label: `શાક ${i + 1}`, idx: '' })}
     ${numField('જથ્થો <span data-unit>' + esc(v ? v.unit : 'kg') + '</span>', `qty_${i}`, l.qty ? Number(l.qty) : '', { step: '0.001' })}
     ${numField('દર ₹', `rate_${i}`, l.rate ? Number(l.rate) : '')}
-    <div class="field lineamt"><label>રકમ</label><output data-lineamt>₹0.00</output></div>
+    ${numField('મુદ્દા (પાર્સલ)', `mudda_${i}`, l.mudda ?? '', { step: '1', required: false })}
+    ${selectField('6% કમિશન', `comm_${i}`, [{ value: 'incl', label: 'ભેગું' }, { value: 'excl', label: 'અલગ (+6%)' }], l.commission_excl ? 'excl' : 'incl')}
+    <div class="field lineamt"><label>રકમ</label><output data-lineamt>₹0.00</output><small class="muted" data-linecomm></small></div>
     <button type="button" class="btn light small removeline" data-remove-line title="પંક્તિ કાઢો">✕</button>
   </div>`;
 }
@@ -114,7 +116,7 @@ export async function purchaseForm(rec = null) {
     <h4 class="formsub">શાકભાજી</h4>
     <div id="lines">${lines.map((l, i) => lineRow(i, l)).join('')}</div>
     <button type="button" class="btn secondary small" data-add-line>＋ બીજું શાક ઉમેરો</button>
-    <div class="billtotal">કુલ બિલ: <b data-total>₹0.00</b></div>
+    <div class="billtotal">કુલ બિલ: <b data-total>₹0.00</b><span data-mudda></span></div>
     ${rec ? '' : `<h4 class="formsub">વેપારીને ચુકવણી અને ખર્ચ (વૈકલ્પિક)</h4><div class="formgrid">
       ${numField('અત્યારે ચૂકવેલ રકમ ₹', 'paid_amount', '', { required: false, help: 'ખાલી = પૂરું ઉધાર • ઓછી રકમ = બાકી વેપારી ખાતામાં રહેશે' })}
       ${selectField('ચુકવણી માધ્યમ', 'paid_method', state.meta.paymentMethods, 'રોકડ')}
@@ -130,13 +132,19 @@ export async function purchaseForm(rec = null) {
     onOpen(form) {
       bindTraderPicker(form);
       const recalc = () => {
-        let total = 0;
+        let total = 0, mudda = 0;
         for (const row of $$('[data-line]', form)) {
           const q = Number(cleanNum($('[name^=qty_]', row).value)) || 0, r = Number(cleanNum($('[name^=rate_]', row).value)) || 0;
-          const amt = Math.round(q * r * 100) / 100; total += amt;
+          const base = Math.round(q * r * 100) / 100;
+          const excl = $('[name^=comm_]', row).value === 'excl';
+          const comm = excl ? Math.round(base * 6) / 100 : 0;
+          const amt = Math.round((base + comm) * 100) / 100; total += amt;
           $('[data-lineamt]', row).textContent = money(amt);
+          $('[data-linecomm]', row).textContent = excl ? `${money(base)} + 6% ${money(comm)}` : '';
+          mudda += Number(cleanNum($('[name^=mudda_]', row).value)) || 0;
         }
         $('[data-total]', form).textContent = money(total);
+        $('[data-mudda]', form).textContent = mudda ? ` • કુલ મુદ્દા: ${mudda}` : '';
         const dueEl = $('[data-due]', form);
         if (dueEl) {
           const paid = Number(cleanNum(form.paid_amount.value)) || 0;
@@ -150,8 +158,9 @@ export async function purchaseForm(rec = null) {
         $('label', row).textContent = `શાક ${i + 1}`;
         $('[data-veg]', row).name = `veg_${i}`; $('.newveg select', row).name = `veg_${i}_unit`;
         $('[name^=qty_]', row).name = `qty_${i}`; $('[name^=rate_]', row).name = `rate_${i}`;
+        $('[name^=mudda_]', row).name = `mudda_${i}`; $('[name^=comm_]', row).name = `comm_${i}`;
       });
-      form.addEventListener('input', recalc);
+      form.addEventListener('input', recalc); form.addEventListener('change', recalc);
       $('[data-add-line]', form).addEventListener('click', () => {
         const n = $$('[data-line]', form).length;
         if (n >= 40) return;
@@ -180,7 +189,8 @@ export async function purchaseForm(rec = null) {
       const rows = $$('[data-line]', form);
       const payload = {
         entry_date: d.entry_date, ...traderBody(d), bill_no: d.bill_no, note: d.note,
-        lines: rows.map((row, i) => ({ ...vegBody(d[`veg_${i}`], d[`veg_${i}_unit`]), qty: d[`qty_${i}`], rate: d[`rate_${i}`] })),
+        lines: rows.map((row, i) => ({ ...vegBody(d[`veg_${i}`], d[`veg_${i}_unit`]), qty: d[`qty_${i}`], rate: d[`rate_${i}`],
+          mudda: d[`mudda_${i}`], commission: d[`comm_${i}`] })),
       };
       let out;
       if (rec) out = await patch(`/records/purchases/${rec.id}`, { ...payload, reason: d.reason });
