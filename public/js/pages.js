@@ -26,8 +26,9 @@ function head(title, sub = '') {
 // ================= HOME =================
 // v6 simple accounting: no item-wise selling, no stock counting. Papa types one sales total per day.
 export async function home(root) {
-  const [d, dayBills, allBills] = await Promise.all([get(`/dashboard${qs({ date: state.date })}`),
-    get(`/records/purchases${qs({ unpaid: 1, date: state.date, limit: 300 })}`), get(`/records/purchases${qs({ unpaid: 1, to: state.date, limit: 1000 })}`)]);
+  const pr = periodRange();
+  const h = await get(`/home${qs({ date: state.date, pfrom: pr.from, pto: pr.to })}`);
+  const d = h.dashboard, dayBills = h.day_bills, allBills = h.all_bills;
   const t = d.totals, y = d.diary;
   const res = Number(y.result);
   root.innerHTML = `${head('આજની ડાયરી')}
@@ -60,7 +61,7 @@ export async function home(root) {
   </div>
   <div class="card"><h3 class="sectiontitle">બાકી બિલ — ${gDate(state.date)}</h3>${billTable(dayBills, { empty: 'આ દિવસનું કોઈ બિલ બાકી નથી', date: false })}</div>
   <div class="card"><h3 class="sectiontitle">કુલ બાકી બિલ (${gDate(state.date)} સુધી, આ દિવસ સહિત)</h3>${billTable(allBills, { empty: 'કોઈ બિલ બાકી નથી' })}</div>`;
-  await periodResult();
+  if (h.period && !h.period.error) showPeriod(pr, h.period); else await periodResult();
 }
 
 // ---- period result: this week / this month / from the start / chosen dates (all up to the work date) ----
@@ -93,8 +94,17 @@ export async function periodResult(el = null) {
   const out = $('#periodOut');
   if (!out) return;
   const r = periodRange();
+  out.classList.add('stale');
   try {
-    const s = await get(`/reports/summary${qs({ from: r.from, to: r.to })}`);
+    showPeriod(r, await get(`/reports/summary${qs({ from: r.from, to: r.to })}`));
+  } catch (e) { out.innerHTML = `<div class="alert">${esc(e.message)}</div>`; }
+  out.classList.remove('stale');
+}
+
+function showPeriod(r, s) {
+  const out = $('#periodOut');
+  if (!out) return;
+  {
     const T = s.totals, res = Number(T.result);
     const missing = s.days.filter((x) => x.day_sale === null && Number(x.sales) === 0).length;
     out.innerHTML = `<div class="periodres ${res < 0 ? 'neg' : 'pos'}"><div class="metric">${r.label}: ${gDate(s.from)} થી ${gDate(s.to)}</div>
@@ -105,7 +115,7 @@ export async function periodResult(el = null) {
         ['<b>= પરિણામ</b>', `<b class="${res < 0 ? 'red' : 'green'}">${money(T.result)}</b>`],
       ].map((x) => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`), { cls: 'diary' })}
       ${missing ? `<p class="note amber">⚠️ ${missing} દિવસનું વેચાણ હજુ લખ્યું નથી — તે દિવસોની ખરીદી બાદ થઈ છે, વેચાણ નહીં.</p>` : ''}`;
-  } catch (e) { out.innerHTML = `<div class="alert">${esc(e.message)}</div>`; }
+  }
 }
 
 /** Unpaid / part-paid bills with a "ચુકવો" button that pays against that exact bill. */
