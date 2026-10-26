@@ -67,12 +67,10 @@ test('sales cannot exceed stock (also for backdated entries); waste reduces stoc
   assert.equal(Number(st.opening), 110); assert.equal(Number(st.sold), 80); assert.equal(Number(st.wasted), 6); assert.equal(Number(st.closing), 24);
 });
 
-test('edit and void recalculate stock; edits need a reason and are audited; cannot void a purchase whose stock was sold', async () => {
+test('edit and void recalculate stock; edits are audited (reason optional since v8); cannot void a purchase whose stock was sold', async () => {
   const sales = (await o.get(`/records/sales?date=${D2}`)).data;
   const s = sales[0];
-  let r = await o.patch(`/records/sales/${s.id}`, { entry_date: D2, vegetable_id: s.vegetable_id, qty: '70', rate: '20', payment_mode: 'UPI' });
-  assert.equal(r.status, 400); // no reason
-  r = await o.patch(`/records/sales/${s.id}`, { entry_date: D2, vegetable_id: s.vegetable_id, qty: '70', rate: '20', payment_mode: 'UPI', reason: 'જથ્થો ખોટો લખ્યો' });
+  let r = await o.patch(`/records/sales/${s.id}`, { entry_date: D2, vegetable_id: s.vegetable_id, qty: '70', rate: '20', payment_mode: 'UPI', reason: 'જથ્થો ખોટો લખ્યો' });
   assert.equal(r.status, 200); assert.equal(r.data.amount, '1400.00');
   let st = (await o.get(`/stock?date=${D2}`)).data.rows.find((x) => x.name === 'ટામેટાં');
   assert.equal(Number(st.closing), 34);
@@ -125,10 +123,10 @@ test('daily diary formulas: closing value is typed; waste and payments are not d
   assert.equal(d.diary.net_purchases, '1000.00');
   assert.equal(d.diary.result, '-200.00'); // 900 − 1000 − 100
   assert.equal(d.diary.payments, '1000.00'); // paid, not deducted again
-  // the old closing-value endpoint still works (kept for old data) and needs a reason to change
+  // the old closing-value endpoint still works (kept for old data) (no reason needed since v8)
   let r = await o.put(`/closing/${D3}`, { closing_stock_value: '3350' });
   assert.equal(r.status, 200);
-  r = await o.put(`/closing/${D3}`, { closing_stock_value: '3300' }); assert.equal(r.status, 400);
+  r = await o.put(`/closing/${D3}`, { closing_stock_value: '3300' }); assert.equal(r.status, 200);
   const sum = (await o.get(`/reports/summary?from=${D1}&to=${D3}`)).data;
   assert.equal(sum.days.length, 3);
 });
