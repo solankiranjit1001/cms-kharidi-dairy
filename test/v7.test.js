@@ -70,3 +70,12 @@ test('ચુકવો against a bill shows in that bill; general payment clears 
   const d = (await o.get('/dashboard?date=2026-10-25')).data;
   assert.equal(d.diary.today_bills_due, '1300.00');
 });
+
+test('period result: from the start and a chosen range', async () => {
+  await o.put('/daysale/2026-10-25', { amount: '5000' });
+  const all = (await o.get('/reports/summary?from=start&to=2026-10-26')).data;
+  assert.equal(all.from, '2026-10-24'); // first purchase date in this test file
+  const one = (await o.get('/reports/summary?from=2026-10-25&to=2026-10-25')).data;
+  assert.equal(one.totals.sales, '5000.00');
+  assert.equal(one.totals.result, '3000.00'); // 5000 − bill of 2000
+});
