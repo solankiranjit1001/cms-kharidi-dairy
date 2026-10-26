@@ -51,3 +51,12 @@ test('ઉધાર: items, total, receipt, delete; paid-up customers are hidden'
   // credit is not part of the day result
   assert.equal((await o.get('/dashboard?date=2026-10-25')).data.diary.result, '0.00');
 });
+
+test('home page data comes in one request', async () => {
+  const h = (await o.get('/home?date=2026-10-26&pfrom=2026-10-01&pto=2026-10-26')).data;
+  assert.ok(h.dashboard.diary);
+  assert.ok(Array.isArray(h.day_bills) && Array.isArray(h.all_bills));
+  assert.equal(h.period.from, '2026-10-01');
+  const s = (await o.get('/home?date=2026-10-26&pfrom=start&pto=2026-10-26')).data;
+  assert.ok(s.period.totals);
+});
