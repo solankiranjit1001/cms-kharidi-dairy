@@ -3,7 +3,19 @@ export class ApiError extends Error {
   constructor(status, message, details) { super(message); this.status = status; this.details = details; }
 }
 
+// Thin bar at the top of the screen while any request is running, so every tap gives instant feedback.
+let inflight = 0;
+function busy(delta) {
+  inflight = Math.max(0, inflight + delta);
+  document.body.classList.toggle('netbusy', inflight > 0);
+}
+
 export async function api(method, path, body) {
+  busy(1);
+  try { return await call(method, path, body); } finally { busy(-1); }
+}
+
+async function call(method, path, body) {
   let res;
   try {
     res = await fetch('/api' + path, {

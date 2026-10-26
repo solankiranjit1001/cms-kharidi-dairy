@@ -21,20 +21,44 @@ const PAGES = {
 };
 
 // ---------- rendering ----------
+// v8.1 speed: the server is far away (~0.4 s per request), so a tap must never look dead.
+// The last screen of a page is kept and shown at once (dimmed, not clickable) while fresh data loads.
+const viewCache = new Map();
+let shownKey = null;
+let running = null, pending = false;
+// Renders never overlap: a tap during loading is remembered and drawn right after (so an old page can never
+// overwrite the new one).
 async function render() {
+  if (running) { pending = true; return running; }
+  running = draw();
+  try { await running; } finally { running = null; }
+  if (pending) { pending = false; return render(); }
+}
+
+async function draw() {
   const root = $('#app');
   const page = PAGES[state.page] ? state.page : 'home';
+  const key = `${page}|${state.date}`;
   $$('#nav button').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
+  if (shownKey !== key) {
+    root.innerHTML = viewCache.get(key) || '<div class="loadingview"><span class="spinner"></span> લોડ થઈ રહ્યું છે…</div>';
+    shownKey = key;
+  }
+  root.classList.add('refreshing');
   try {
     await PAGES[page].render(root);
+    viewCache.set(key, root.innerHTML);
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) return;
     root.innerHTML = `<div class="alert">⚠️ ${esc(e.message || 'માહિતી લાવી શકાઈ નહીં.')}<br><button class="btn light small" data-action="reload">ફરી પ્રયાસ કરો</button></div>`;
+  } finally {
+    root.classList.remove('refreshing');
   }
 }
 
 function go(page) {
   state.page = PAGES[page] ? page : 'home';
+  $$('#nav button').forEach((b) => b.classList.toggle('active', b.dataset.page === state.page)); // instant highlight
   if (location.hash !== '#' + state.page) history.replaceState(null, '', '#' + state.page);
   render();
   window.scrollTo(0, 0);
@@ -130,7 +154,7 @@ const ACTIONS = {
   'market-analyse': () => P.marketAnalyse(),
   'report-show': () => showReport(),
   'pin-change': () => S.pinDialog(),
-  async logout() { await post('/auth/logout').catch(() => {}); state.user = null; state.meta = null; showLogin(); },
+  async logout() { await post('/auth/logout').catch(() => {}); state.user = null; state.meta = null; viewCache.clear(); shownKey = null; showLogin(); },
   'user-new': () => reloadAfter(S.userDialog()),
   'user-edit': (el) => reloadAfter(S.userDialog(el.dataset.id)),
   'veg-new': () => reloadAfter(S.vegDialog()),
@@ -150,7 +174,8 @@ document.addEventListener('click', async (e) => {
   e.preventDefault();
   if (el.dataset.busy) return;
   el.dataset.busy = '1';
-  try { await ACTIONS[el.dataset.action](el); } catch (err) { toast(err.message || 'ભૂલ આવી', 'err'); } finally { delete el.dataset.busy; }
+  el.classList.add('busy'); // spinner on the tapped button
+  try { await ACTIONS[el.dataset.action](el); } catch (err) { toast(err.message || 'ભૂલ આવી', 'err'); } finally { delete el.dataset.busy; el.classList.remove('busy'); }
 });
 
 // ---------- date bar ----------
