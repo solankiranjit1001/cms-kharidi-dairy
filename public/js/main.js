@@ -117,6 +117,7 @@ const ACTIONS = {
   count: () => reloadAfter(P.countDialog()),
   closing: () => reloadAfter(P.closingDialog()),
   daysale: () => reloadAfter(P.daySaleDialog()),
+  period: (el) => P.periodResult(el),
   statement: (el) => P.statementDialog(el.dataset.id),
   'trader-new': () => reloadAfter(P.traderDialog().then(async (r) => { if (r) await reloadMeta(); return r; })),
   async 'trader-edit'(el) {

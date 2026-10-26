@@ -1,5 +1,5 @@
 // Screens. Every number shown comes from the server's saved records.
-import { $, esc, money, num, qty, gDate, weekday, table, metric, dateTime, field, numField, openModal, toast, selectField } from './ui.js';
+import { $, esc, money, num, qty, gDate, weekday, addDays, table, metric, dateTime, field, numField, openModal, toast, selectField } from './ui.js';
 import { get, put, post, patch, qs } from './api.js';
 import { state, canWrite, isOwner } from './state.js';
 import { TYPE_LABEL } from './forms.js';
@@ -36,6 +36,12 @@ export async function home(root) {
   <div class="card resultcard ${res < 0 ? 'neg' : 'pos'}"><div class="metric">આજનું પરિણામ (વેચાણ − ખરીદી − ખર્ચ)</div>
     <div class="amount ${res < 0 ? 'red' : 'green'}">${res > 0 ? '+ ' : res < 0 ? '− ' : ''}${money(Math.abs(res))}</div>
     <div class="sub">${res > 0 ? 'નફો' : res < 0 ? 'નુકસાન' : 'સરભર'}${y.sales_entered ? '' : ' • વેચાણ હજુ લખ્યું નથી'}</div></div>
+  <div class="card periodcard"><h3 class="sectiontitle">કુલ નફો-નુકસાન (સમયગાળો)</h3>
+    <div class="periodbtns noprint">${PERIODS.map((x) => `<button class="btn ${x.key === periodSel ? 'primary' : 'light'} small" data-action="period" data-p="${x.key}">${x.label}</button>`).join('')}</div>
+    <div class="periodrange noprint" ${periodSel === 'custom' ? '' : 'hidden'}>${field('તારીખથી', 'pfrom', { type: 'date', value: periodCustom.from || state.date.slice(0, 8) + '01', attrs: `max="${state.meta.today}"` })}
+      ${field('તારીખ સુધી', 'pto', { type: 'date', value: periodCustom.to || state.date, attrs: `max="${state.meta.today}"` })}
+      <button class="btn primary small" data-action="period" data-p="custom" data-go="1">બતાવો</button></div>
+    <div id="periodOut"><div class="empty">લોડ થઈ રહ્યું છે…</div></div></div>
   <div class="grid">
     ${metric('આજની કુલ ખરીદી', money(y.net_purchases), 'green', `${t.purchase_count} બિલ${Number(y.returns) ? ` • પરત ${money(y.returns)} બાદ` : ''}`)}
     ${metric('આજનું કુલ વેચાણ (ગ્રાહકો પાસેથી મળેલ)', y.sales_entered ? money(y.sales) : '<span class="muted small">હજુ લખ્યું નથી</span>', 'blue',
@@ -57,6 +63,52 @@ export async function home(root) {
   </div>
   <div class="card"><h3 class="sectiontitle">બાકી બિલ — ${gDate(state.date)}</h3>${billTable(dayBills, { empty: 'આ દિવસનું કોઈ બિલ બાકી નથી', date: false })}</div>
   <div class="card"><h3 class="sectiontitle">કુલ બાકી બિલ (${gDate(state.date)} સુધી, આ દિવસ સહિત)</h3>${billTable(allBills, { empty: 'કોઈ બિલ બાકી નથી' })}</div>`;
+  await periodResult();
+}
+
+// ---- period result: this week / this month / from the start / chosen dates (all up to the work date) ----
+const PERIODS = [
+  { key: 'week', label: 'આ અઠવાડિયું' }, { key: 'month', label: 'આ મહિનો' },
+  { key: 'all', label: 'શરૂઆતથી આજ સુધી' }, { key: 'custom', label: '📅 તારીખ પસંદ કરો' },
+];
+let periodSel = 'month';
+const periodCustom = { from: '', to: '' };
+
+function periodRange() {
+  const d = state.date;
+  if (periodSel === 'week') { // Monday to the work date
+    const wd = new Date(d + 'T00:00:00Z').getUTCDay();
+    return { from: addDays(d, -((wd + 6) % 7)), to: d, label: 'આ અઠવાડિયું (સોમવારથી)' };
+  }
+  if (periodSel === 'month') return { from: d.slice(0, 8) + '01', to: d, label: 'આ મહિનો' };
+  if (periodSel === 'all') return { from: 'start', to: d, label: 'શરૂઆતથી' };
+  return { from: periodCustom.from || d.slice(0, 8) + '01', to: periodCustom.to || d, label: 'પસંદ કરેલ સમયગાળો' };
+}
+
+export async function periodResult(el = null) {
+  if (el) {
+    periodSel = el.dataset.p;
+    if (periodSel === 'custom' && el.dataset.go) { periodCustom.from = $('#f_pfrom').value; periodCustom.to = $('#f_pto').value; }
+    document.querySelectorAll('[data-action=period]:not([data-go])').forEach((b) => { b.classList.toggle('primary', b.dataset.p === periodSel); b.classList.toggle('light', b.dataset.p !== periodSel); });
+    $('.periodrange').hidden = periodSel !== 'custom';
+    if (periodSel === 'custom' && !el.dataset.go) return;
+  }
+  const out = $('#periodOut');
+  if (!out) return;
+  const r = periodRange();
+  try {
+    const s = await get(`/reports/summary${qs({ from: r.from, to: r.to })}`);
+    const T = s.totals, res = Number(T.result);
+    const missing = s.days.filter((x) => x.day_sale === null && Number(x.sales) === 0).length;
+    out.innerHTML = `<div class="periodres ${res < 0 ? 'neg' : 'pos'}"><div class="metric">${r.label}: ${gDate(s.from)} થી ${gDate(s.to)}</div>
+      <div class="amount ${res < 0 ? 'red' : 'green'}">${res > 0 ? '+ ' : res < 0 ? '− ' : ''}${money(Math.abs(res))}</div>
+      <div class="sub">${res > 0 ? 'નફો' : res < 0 ? 'નુકસાન' : 'સરભર'}</div></div>
+      ${table(['વિગત', 'રકમ'], [
+        ['કુલ વેચાણ', money(T.sales)], ['− કુલ ખરીદી (પરત બાદ)', money(T.net_purchases)], ['− ખર્ચ', money(T.expenses)],
+        ['<b>= પરિણામ</b>', `<b class="${res < 0 ? 'red' : 'green'}">${money(T.result)}</b>`],
+      ].map((x) => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`), { cls: 'diary' })}
+      ${missing ? `<p class="note amber">⚠️ ${missing} દિવસનું વેચાણ હજુ લખ્યું નથી — તે દિવસોની ખરીદી બાદ થઈ છે, વેચાણ નહીં.</p>` : ''}`;
+  } catch (e) { out.innerHTML = `<div class="alert">${esc(e.message)}</div>`; }
 }
 
 /** Unpaid / part-paid bills with a "ચુકવો" button that pays against that exact bill. */
