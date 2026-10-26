@@ -14,7 +14,6 @@ const PAGES = {
   expenses: { label: '💸 ખર્ચ', render: P.expenses },
   reports: { label: '🖨️ રિપોર્ટ', render: reports },
   market: { label: '📊 બજાર', render: P.market },
-  history: { label: '🗂️ ઇતિહાસ', render: P.historyPage },
   plan: { label: '🌅 આવતીકાલ', render: P.plan },
   settings: { label: '⚙️ સેટિંગ્સ', render: S.settings },
 };
@@ -101,7 +100,7 @@ const ACTIONS = {
   reload: () => render(),
   print: () => window.print(),
   new: (el) => reloadAfter(FORMS[el.dataset.type]()),
-  pay: (el) => reloadAfter(FORMS.payments(null, Number(el.dataset.trader))),
+  pay: (el) => reloadAfter(FORMS.payments(null, Number(el.dataset.trader), el.dataset.bill ? Number(el.dataset.bill) : null)),
   async edit(el) {
     const { type, id } = el.dataset;
     const rec = await get(`/records/${type}/${id}`);
@@ -126,7 +125,6 @@ const ACTIONS = {
     return reloadAfter(P.traderDialog(t).then(async (r) => { if (r) await reloadMeta(); return r; }));
   },
   'market-analyse': () => P.marketAnalyse(),
-  'history-search': () => P.historySearch(),
   'report-show': () => showReport(),
   'pin-change': () => S.pinDialog(),
   async logout() { await post('/auth/logout').catch(() => {}); state.user = null; state.meta = null; showLogin(); },

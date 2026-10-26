@@ -1,6 +1,6 @@
 // Entry / edit forms for every record type. The server recalculates every amount; the
 // totals shown here are only a live preview.
-import { $, $$, esc, money, num, field, numField, selectField, formData, cleanNum, openModal, toast,
+import { $, $$, esc, money, num, gDate, field, numField, selectField, formData, cleanNum, openModal, toast,
   voiceSupported, listen, parseSpoken } from './ui.js';
 import { get, post, patch, uuid, qs } from './api.js';
 import { state, reloadMeta } from './state.js';
@@ -93,17 +93,40 @@ function vegBody(nameValue, unitValue) {
 }
 
 // ============ PURCHASE (bill with many lines) ============
+// Vegetable is chosen from a fixed dropdown (same spelling every time). "➕ નવું શાક" reveals a name box;
+// the new name is saved permanently on the server and appears in the dropdown from then on.
+const COMMISSION_OPTS = [{ value: 'incl', label: 'ભેગું' }, { value: 'excl6', label: 'અલગ (+6%)' }, { value: 'excl7', label: 'અલગ (+7%)' }];
+const COMMISSION_PCT = { incl: 0, excl6: 6, excl7: 7 };
+const commValue = (l) => (!l.commission_excl ? 'incl' : Number(l.commission_pct) === 7 ? 'excl7' : 'excl6');
+
+function vegSelect(i, selectedId) {
+  const list = activeVegs();
+  const opts = [{ value: '', label: '— શાક પસંદ કરો —' }, ...list.map((v) => ({ value: v.id, label: v.name }))];
+  if (selectedId && !list.some((v) => v.id === selectedId)) {
+    const v = state.meta.vegetables.find((x) => x.id === selectedId); if (v) opts.push({ value: v.id, label: v.name });
+  }
+  opts.push({ value: '__new', label: '➕ નવું શાક ઉમેરો' });
+  return `<div class="field vegpick"><label for="f_veg_${i}">શાક ${i + 1}</label><select id="f_veg_${i}" name="veg_${i}" required data-vegsel>${opts.map((o) =>
+    `<option value="${esc(o.value)}" ${String(o.value) === String(selectedId || '') ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
+    <input name="vegnew_${i}" class="newvegname" maxlength="60" autocomplete="off" placeholder="નવા શાકનું નામ (ગુજરાતીમાં)" hidden></div>`;
+}
+
 function lineRow(i, l = {}) {
-  const v = l.vegetable_id ? state.meta.vegetables.find((x) => x.id === l.vegetable_id) : null;
   return `<div class="lineitem" data-line>
-    ${vegInput(`veg_${i}`, v ? v.name : l.vegetable || '', { label: `શાક ${i + 1}`, idx: '' })}
-    ${numField('જથ્થો <span data-unit>' + esc(v ? v.unit : 'kg') + '</span>', `qty_${i}`, l.qty ? Number(l.qty) : '', { step: '0.001' })}
+    ${vegSelect(i, l.vegetable_id)}
+    ${numField('kg', `qty_${i}`, l.qty ? Number(l.qty) : '', { step: '0.001' })}
     ${numField('દર ₹', `rate_${i}`, l.rate ? Number(l.rate) : '')}
-    ${numField('મુદ્દા (પાર્સલ)', `mudda_${i}`, l.mudda ?? '', { step: '1', required: false })}
-    ${selectField('6% કમિશન', `comm_${i}`, [{ value: 'incl', label: 'ભેગું' }, { value: 'excl', label: 'અલગ (+6%)' }], l.commission_excl ? 'excl' : 'incl')}
+    ${numField('મુદ્દા', `mudda_${i}`, l.mudda ?? '', { step: '1', required: false })}
+    ${selectField('કમિશન', `comm_${i}`, COMMISSION_OPTS, commValue(l))}
     <div class="field lineamt"><label>રકમ</label><output data-lineamt>₹0.00</output><small class="muted" data-linecomm></small></div>
     <button type="button" class="btn light small removeline" data-remove-line title="પંક્તિ કાઢો">✕</button>
   </div>`;
+}
+
+function syncVegSelect(row) {
+  const sel = $('[data-vegsel]', row), box = $('.newvegname', row);
+  const isNew = sel.value === '__new';
+  box.hidden = !isNew; box.required = isNew;
 }
 
 export async function purchaseForm(rec = null) {
@@ -111,92 +134,88 @@ export async function purchaseForm(rec = null) {
   const body = `${voiceButton()}<div class="formgrid">
       ${field('તારીખ', 'entry_date', { type: 'date', value: rec ? rec.entry_date : state.date, attrs: `required max="${state.meta.today}"` })}
       ${traderPicker(rec ? rec.trader_id : '')}
-      ${field('બિલ નંબર (વૈકલ્પિક)', 'bill_no', { value: rec?.bill_no || '', attrs: 'maxlength="40" autocomplete="off"' })}
     </div>
     <h4 class="formsub">શાકભાજી</h4>
     <div id="lines">${lines.map((l, i) => lineRow(i, l)).join('')}</div>
     <button type="button" class="btn secondary small" data-add-line>＋ બીજું શાક ઉમેરો</button>
     <div class="billtotal">કુલ બિલ: <b data-total>₹0.00</b><span data-mudda></span><br><small class="muted">દરેક રકમ પૂરા રૂપિયામાં રાઉન્ડ ઑફ થાય છે (50 પૈસા કે વધુ = ઉપર)</small></div>
-    ${rec ? '' : `<h4 class="formsub">વેપારીને ચુકવણી અને ખર્ચ (વૈકલ્પિક)</h4><div class="formgrid">
-      ${numField('અત્યારે ચૂકવેલ રકમ ₹', 'paid_amount', '', { required: false, help: 'ખાલી = પૂરું ઉધાર • ઓછી રકમ = બાકી વેપારી ખાતામાં રહેશે' })}
-      ${selectField('ચુકવણી માધ્યમ', 'paid_method', state.meta.paymentMethods, 'રોકડ')}
-      ${field('રેફરન્સ / UPI', 'paid_reference', { attrs: 'maxlength="80" autocomplete="off"' })}
-      ${numField('ટ્રાન્સપોર્ટ / હમાલી ખર્ચ ₹', 'transport_amount', '', { required: false, help: 'અલગ ખર્ચ તરીકે નોંધાશે' })}
-      ${selectField('ખર્ચ પ્રકાર', 'transport_category', ['ટ્રાન્સપોર્ટ', 'હમાલી/મજૂરી'], 'ટ્રાન્સપોર્ટ')}
-    </div><div class="billtotal">ચૂકવેલ <b data-paid>₹0.00</b> • વેપારીને ચૂકવવાના બાકી: <b class="amber" data-due>₹0.00</b></div>`}
-    <div class="formgrid one">${field('નોંધ', 'note', { value: rec?.note || '', attrs: 'maxlength="300"' })}${reasonField(rec)}</div>
-    ${vegDatalist()}`;
+    <div class="formgrid one">${field('નોંધ', 'note', { value: rec?.note || '', attrs: 'maxlength="300"' })}${reasonField(rec)}</div>`;
   const cid = uuid();
   return openModal({
     title: rec ? `ખરીદી બિલ #${rec.id} માં ફેરફાર` : '🧺 નવી ખરીદી', body, wide: true,
     onOpen(form) {
       bindTraderPicker(form);
       const recalc = () => {
-        let total = 0, mudda = 0;
+        let total = 0, mudda = 0, kg = 0;
         for (const row of $$('[data-line]', form)) {
           const q = Number(cleanNum($('[name^=qty_]', row).value)) || 0, r = Number(cleanNum($('[name^=rate_]', row).value)) || 0;
+          kg += q;
           // round off to whole rupees, same rule as the server (₹0.50 and above goes up)
           const base = Math.round(Math.round(q * r * 100) / 100);
-          const excl = $('[name^=comm_]', row).value === 'excl';
-          const comm = excl ? Math.round(base * 6 / 100) : 0;
+          const pct = COMMISSION_PCT[$('[name^=comm_]', row).value] || 0;
+          const comm = pct ? Math.round(base * pct / 100) : 0;
           const amt = base + comm; total += amt;
           $('[data-lineamt]', row).textContent = money(amt);
-          $('[data-linecomm]', row).textContent = excl ? `${money(base)} + 6% ${money(comm)}` : '';
+          $('[data-linecomm]', row).textContent = pct ? `${money(base)} + ${pct}% ${money(comm)}` : '';
           mudda += Number(cleanNum($('[name^=mudda_]', row).value)) || 0;
         }
         $('[data-total]', form).textContent = money(total);
-        $('[data-mudda]', form).textContent = mudda ? ` • કુલ મુદ્દા: ${mudda}` : '';
-        const dueEl = $('[data-due]', form);
-        if (dueEl) {
-          const paid = Math.round(Number(cleanNum(form.paid_amount.value)) || 0);
-          $('[data-paid]', form).textContent = money(paid);
-          const due = Math.round((total - paid) * 100) / 100;
-          dueEl.textContent = due < 0 ? 'ચૂકવેલ રકમ બિલથી વધુ છે' : money(due);
-          dueEl.className = due < 0 ? 'red' : due === 0 ? 'green' : 'amber';
-        }
+        $('[data-mudda]', form).textContent = `${kg ? ` • કુલ ${num(kg)} kg` : ''}${mudda ? ` • કુલ મુદ્દા: ${mudda}` : ''}`;
       };
       const renumber = () => $$('[data-line]', form).forEach((row, i) => {
         $('label', row).textContent = `શાક ${i + 1}`;
-        $('[data-veg]', row).name = `veg_${i}`; $('.newveg select', row).name = `veg_${i}_unit`;
+        $('[data-vegsel]', row).name = `veg_${i}`; $('.newvegname', row).name = `vegnew_${i}`;
         $('[name^=qty_]', row).name = `qty_${i}`; $('[name^=rate_]', row).name = `rate_${i}`;
         $('[name^=mudda_]', row).name = `mudda_${i}`; $('[name^=comm_]', row).name = `comm_${i}`;
       });
-      form.addEventListener('input', recalc); form.addEventListener('change', recalc);
+      form.addEventListener('input', recalc);
+      form.addEventListener('change', (e) => {
+        const row = e.target.closest('[data-line]');
+        if (row && e.target.matches('[data-vegsel]')) { syncVegSelect(row); if (e.target.value === '__new') $('.newvegname', row).focus(); }
+        recalc();
+      });
       $('[data-add-line]', form).addEventListener('click', () => {
         const n = $$('[data-line]', form).length;
         if (n >= 40) return;
         $('#lines', form).insertAdjacentHTML('beforeend', lineRow(n));
-        renumber(); bindVegInputs($('#lines', form).lastElementChild); recalc();
-        $('[data-veg]', $('#lines', form).lastElementChild).focus();
+        renumber(); recalc();
+        $('[data-vegsel]', $('#lines', form).lastElementChild).focus();
       });
       $('#lines', form).addEventListener('click', (e) => {
         if (!e.target.closest('[data-remove-line]')) return;
         if ($$('[data-line]', form).length === 1) return toast('ઓછામાં ઓછું એક શાક જોઈએ.', 'warn');
         e.target.closest('[data-line]').remove(); renumber(); recalc();
       });
-      renumber(); bindVegInputs(form); recalc();
+      renumber(); $$('[data-line]', form).forEach(syncVegSelect); recalc();
       bindVoice(form, (p) => {
         const rows = $$('[data-line]', form);
-        let row = rows.find((r) => !$('[data-veg]', r).value.trim());
+        let row = rows.find((r) => !$('[data-vegsel]', r).value);
         if (!row) { $('[data-add-line]', form).click(); row = $$('[data-line]', form).pop(); }
-        if (p.veg) $('[data-veg]', row).value = p.veg;
+        const v = p.veg ? vegByName(p.veg) : null;
+        if (v) $('[data-vegsel]', row).value = v.id;
         if (p.qty) $('[name^=qty_]', row).value = p.qty;
         if (p.rate) $('[name^=rate_]', row).value = p.rate;
-        $('[data-veg]', row).dispatchEvent(new Event('input', { bubbles: true }));
+        syncVegSelect(row); recalc();
       });
     },
     async onSubmit(form) {
       const d = formData(form);
       const rows = $$('[data-line]', form);
+      const vegPart = (i) => {
+        if (d[`veg_${i}`] !== '__new') return { vegetable_id: d[`veg_${i}`] };
+        const name = d[`vegnew_${i}`];
+        if (!name) throw new Error(`શાક ${i + 1}: નવા શાકનું નામ લખો.`);
+        const ex = vegByName(name);
+        return ex ? { vegetable_id: ex.id } : { vegetable: name, unit: 'kg', createVegetable: true };
+      };
       const payload = {
-        entry_date: d.entry_date, ...traderBody(d), bill_no: d.bill_no, note: d.note,
-        lines: rows.map((row, i) => ({ ...vegBody(d[`veg_${i}`], d[`veg_${i}_unit`]), qty: d[`qty_${i}`], rate: d[`rate_${i}`],
+        entry_date: d.entry_date, ...traderBody(d), note: d.note,
+        lines: rows.map((row, i) => ({ ...vegPart(i), qty: d[`qty_${i}`], rate: d[`rate_${i}`],
           mudda: d[`mudda_${i}`], commission: d[`comm_${i}`] })),
       };
       let out;
-      if (rec) out = await patch(`/records/purchases/${rec.id}`, { ...payload, reason: d.reason });
-      else out = await post('/records/purchases', { ...payload, client_id: cid, paid_amount: d.paid_amount, paid_method: d.paid_method,
-        paid_reference: d.paid_reference, transport_amount: d.transport_amount, transport_category: d.transport_category });
+      if (rec) out = await patch(`/records/purchases/${rec.id}`, { ...payload, bill_no: rec.bill_no || '', reason: d.reason });
+      else out = await post('/records/purchases', { ...payload, client_id: cid });
       if (payload.lines.some((l) => l.createVegetable) || d.trader_id === '__new') await reloadMeta();
       toast(out.duplicate ? 'આ ખરીદી પહેલેથી સેવ થઈ ગઈ હતી.' : `ખરીદી સેવ થઈ — કુલ ${money(out.total_amount)}`);
       return out;
@@ -325,30 +344,42 @@ export function adjustmentForm(rec = null) {
   });
 }
 
-export async function paymentForm(rec = null, traderId = null) {
-  return simple({ type: 'payments', rec, title: '💳 વેપારીને ચુકવણી',
-    fields: `${dateField(rec)}${traderPicker(rec ? rec.trader_id : traderId, { allowNew: false })}
-      ${numField('રકમ ₹', 'amount', rec ? Number(rec.amount) : '')}
-      ${selectField('માધ્યમ', 'method', state.meta.paymentMethods, rec?.method || 'રોકડ')}
-      ${field('રેફરન્સ / UPI / ચેક નં.', 'reference', { value: rec?.reference || '', attrs: 'maxlength="80" autocomplete="off"' })}
-      ${selectField('બિલ સામે (વૈકલ્પિક)', 'purchase_id', [{ value: '', label: '— ખાતામાં સામાન્ય ચુકવણી —' }], rec?.purchase_id || '', { attrs: 'data-bills' })}
+export async function paymentForm(rec = null, traderId = null, billId = null) {
+  return simple({ type: 'payments', rec, title: billId ? `💳 બિલ #${billId} ચુકવો` : '💳 વેપારીને ચુકવણી',
+    fields: `<div class="field wide billdue" data-billdue hidden></div>
+      ${dateField(rec)}${traderPicker(rec ? rec.trader_id : traderId, { allowNew: false })}
+      ${selectField('બિલ સામે', 'purchase_id', [{ value: '', label: '— ખાતામાં સામાન્ય ચુકવણી (જૂનાં બિલ પહેલાં) —' }], rec?.purchase_id || billId || '', { attrs: 'data-bills' })}
+      ${numField('ચૂકવવાની રકમ ₹', 'amount', rec ? Number(rec.amount) : '')}
       ${field('નોંધ', 'note', { value: rec?.note || '', attrs: 'maxlength="300"' })}`,
     onOpen(form) {
+      let bills = [];
+      const showDue = () => {
+        const box = $('[data-billdue]', form);
+        const b = bills.find((x) => String(x.id) === form.purchase_id.value);
+        if (!b) { box.hidden = true; return; }
+        box.hidden = false;
+        box.innerHTML = `બિલ #${b.id} • ${esc(gDate(b.entry_date))} • કુલ ${money(b.total_amount)} • ચૂકવેલ ${money(b.paid_amount)}<br>બાકી રકમ: <b class="amber">${money(b.due_amount)}</b>`;
+      };
       const load = async () => {
         const sel = $('[data-bills]', form);
         const tid = form.trader_id.value;
-        sel.innerHTML = '<option value="">— ખાતામાં સામાન્ય ચુકવણી —</option>';
-        if (!tid || tid === '__new') return;
+        const want = sel.value || (rec?.purchase_id ? String(rec.purchase_id) : billId ? String(billId) : '');
+        sel.innerHTML = '<option value="">— ખાતામાં સામાન્ય ચુકવણી (જૂનાં બિલ પહેલાં) —</option>';
+        bills = [];
+        if (!tid || tid === '__new') return showDue();
         try {
-          const bills = await get(`/records/purchases${qs({ trader_id: tid, unpaid: 1, limit: 50 })}`);
-          for (const b of bills) sel.insertAdjacentHTML('beforeend', `<option value="${b.id}">#${b.id} • ${esc(b.entry_date)} • બાકી ${money(b.due_amount)}</option>`);
-          if (rec?.purchase_id && ![...sel.options].some((o) => o.value === String(rec.purchase_id))) sel.insertAdjacentHTML('beforeend', `<option value="${rec.purchase_id}">#${rec.purchase_id}</option>`);
-          if (rec?.purchase_id) sel.value = rec.purchase_id;
+          bills = await get(`/records/purchases${qs({ trader_id: tid, unpaid: 1, limit: 100 })}`);
+          for (const b of bills) sel.insertAdjacentHTML('beforeend', `<option value="${b.id}">#${b.id} • ${esc(gDate(b.entry_date))} • બાકી ${money(b.due_amount)}</option>`);
+          if (want && ![...sel.options].some((o) => o.value === want)) sel.insertAdjacentHTML('beforeend', `<option value="${want}">#${want}</option>`);
+          sel.value = want;
         } catch { /* optional */ }
+        showDue();
       };
-      form.trader_id.addEventListener('change', load); load();
+      form.trader_id.addEventListener('change', () => { $('[data-bills]', form).value = ''; load(); });
+      form.purchase_id.addEventListener('change', showDue);
+      load();
     },
-    toBody: (d) => ({ entry_date: d.entry_date, ...traderBody(d), amount: d.amount, method: d.method, reference: d.reference, purchase_id: d.purchase_id || null, note: d.note }),
+    toBody: (d) => ({ entry_date: d.entry_date, ...traderBody(d), amount: d.amount, purchase_id: d.purchase_id || null, note: d.note }),
     done: (o) => `ચુકવણી નોંધાઈ — ${money(o.amount)}`,
   });
 }
