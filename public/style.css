@@ -170,3 +170,5 @@ dialog::backdrop{background:#201b18a8}
 /* v6: big result card on home */
 .resultcard{text-align:center;border-width:2px}.resultcard.pos{border-color:#1a7f37}.resultcard.neg{border-color:#c62828}
 .resultcard .amount{font-size:34px}
+.periodbtns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}.periodrange{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px}
+.periodres{text-align:center;padding:8px 0 12px}.periodres .amount{font-size:30px;font-weight:800}
