@@ -6,11 +6,13 @@ import { FORMS } from './forms.js';
 import * as P from './pages.js';
 import { reports, showReport } from './reports.js';
 import * as S from './settings.js';
+import { creditPage, creditActions, resetCredit } from './credit.js';
 
 const PAGES = {
   home: { label: '🏠 હોમ', render: P.home },
   purchase: { label: '🧺 ખરીદી', render: P.purchase },
   traders: { label: '📒 વેપારી', render: P.traders },
+  credit: { label: '📝 ઉધાર', render: creditPage },
   expenses: { label: '💸 ખર્ચ', render: P.expenses },
   reports: { label: '🖨️ રિપોર્ટ', render: reports },
   market: { label: '📊 બજાર', render: P.market },
@@ -96,7 +98,7 @@ async function reloadAfter(promise) {
 }
 
 const ACTIONS = {
-  go: (el) => go(el.dataset.page),
+  go: (el) => { if (el.dataset.page === 'credit') resetCredit(); go(el.dataset.page); },
   reload: () => render(),
   print: () => window.print(),
   new: (el) => reloadAfter(FORMS[el.dataset.type]()),
@@ -137,11 +139,12 @@ const ACTIONS = {
   'import-commit': () => S.commitImport(),
   backup: () => S.backup(),
   csv: () => S.csv(),
+  ...Object.fromEntries(Object.entries(creditActions).map(([k, fn]) => [k, (el) => fn(el, render)])),
 };
 
 document.addEventListener('click', async (e) => {
   const nav = e.target.closest('#nav button[data-page]');
-  if (nav) return go(nav.dataset.page);
+  if (nav) { if (nav.dataset.page === 'credit') resetCredit(); return go(nav.dataset.page); }
   const el = e.target.closest('[data-action]');
   if (!el || !ACTIONS[el.dataset.action]) return;
   e.preventDefault();

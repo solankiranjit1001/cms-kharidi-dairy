@@ -33,10 +33,8 @@ test('day result, partial payment due, and one sales total per day', async () =>
   assert.equal(d.diary.result, '900.00'); // 6100 − 5000 − 200
   assert.equal(d.warnings.length, 0);
 
-  // changing a saved total needs a reason, and is audited
+  // changing a saved total needs no reason (v8) and is audited
   r = await o.put(`/daysale/${D}`, { amount: '6000' });
-  assert.equal(r.status, 400);
-  r = await o.put(`/daysale/${D}`, { amount: '6000', reason: 'ગણતરી ભૂલ' });
   assert.equal(r.status, 200);
 
   // pay the remaining 1000 later
