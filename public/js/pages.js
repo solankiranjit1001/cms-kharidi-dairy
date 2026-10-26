@@ -49,11 +49,8 @@ export async function home(root) {
     ${metric('આજે વેપારીને ચૂકવેલ', money(y.payments), 'amber')}
     ${metric('આજના બિલમાંથી ચૂકવવાના બાકી', money(y.today_bills_due), 'red', `બધા વેપારીની કુલ બાકી: <b>${money(d.payable)}</b>${Number(d.advances) ? ` • એડવાન્સ ${money(d.advances)}` : ''}`)}
     ${metric('આજનો ખર્ચ', money(y.expenses), 'red', 'ટ્રાન્સપોર્ટ / હમાલી વગેરે')}
+    ${metric('કુલ ઉધાર (ગ્રાહકો પાસે બાકી)', money(d.credit_total), 'amber', `<button class="btn light small" data-action="go" data-page="credit">📝 ઉધાર જુઓ</button>`)}
   </div>
-  ${canWrite() ? `<div class="card noprint"><h3 class="sectiontitle">ઝડપી એન્ટ્રી</h3><div class="quick">
-    <button data-action="new" data-type="purchases">🧺<br>ખરીદી</button><button data-action="daysale">💰<br>આજનું વેચાણ</button>
-    <button data-action="new" data-type="payments">💳<br>વેપારી ચુકવણી</button><button data-action="new" data-type="expenses">💸<br>ખર્ચ</button>
-    <button data-action="new" data-type="market">📊<br>બજાર ભાવ</button></div></div>` : ''}
   <div class="grid two">
     <div class="card"><h3 class="sectiontitle">આજનો હિસાબ</h3>${diaryTable(y)}</div>
     <div class="card"><h3 class="sectiontitle">વેપારી બાકી (ચૂકવવાના)</h3>${table(['વેપારી', 'બાકી', ''],
@@ -141,7 +138,7 @@ export async function daySaleDialog() {
     body: `<p class="note">દિવસના અંતે ગ્રાહકો પાસેથી મળેલ <b>કુલ રકમ</b> લખો (રોકડ + UPI બધું મળીને). શાક પ્રમાણે અલગ લખવાની જરૂર નથી.</p>
       <div class="formgrid one">${numField('આજનું કુલ વેચાણ ₹', 'amount', has ? Number(y.day_sale) : '')}
       ${field('નોંધ (વૈકલ્પિક)', 'note', { value: y.day_sale_note || '', attrs: 'maxlength="200"' })}
-      ${has ? field('ફેરફારનું કારણ (રકમ બદલો તો ફરજિયાત)', 'reason', { attrs: 'maxlength="200"' }) : ''}</div>
+      </div>
       <div class="billtotal">ખરીદી ${money(y.net_purchases)} • ખર્ચ ${money(y.expenses)} → પરિણામ: <b data-res>—</b></div>`,
     onOpen(form) {
       const calc = () => {
@@ -236,7 +233,7 @@ export async function closingDialog() {
     body: `<p class="note">દિવસના અંતે બચેલા માલનું કુલ ₹ મૂલ્ય. સૂચન: <b>${money(st.suggested_value)}</b> (જથ્થો × સરેરાશ ખરીદી દર) <button type="button" class="btn light small" data-use-hint>સૂચન વાપરો</button></p>
       <div class="formgrid one">${numField('ક્લોઝિંગ સ્ટોક મૂલ્ય ₹', 'closing_stock_value', has ? Number(st.closing.closing_stock_value) : '')}
       ${field('નોંધ', 'note', { value: st.closing?.note || '', attrs: 'maxlength="200"' })}
-      ${has ? field('ફેરફારનું કારણ (મૂલ્ય બદલો તો ફરજિયાત)', 'reason', { attrs: 'maxlength="200"' }) : ''}</div>`,
+      </div>`,
     onOpen(form) { $('[data-use-hint]', form).addEventListener('click', () => { form.closing_stock_value.value = Number(st.suggested_value); }); },
     async onSubmit(form) {
       await put(`/closing/${state.date}`, { closing_stock_value: form.closing_stock_value.value, note: form.note.value, reason: form.reason?.value });
@@ -280,7 +277,7 @@ export async function traderDialog(t = null) {
       ${isOwner() ? numField('શરૂઆતની બાકી ₹ (માઇનસ = એડવાન્સ)', 'opening_balance', t ? Number(t.opening_balance) : '', { required: false, min: null }) : ''}
       ${field('નોંધ', 'note', { value: t?.note || '', attrs: 'maxlength="200"' })}
       ${t && isOwner() ? selectField('સ્થિતિ', 'active', [{ value: 'true', label: 'ચાલુ' }, { value: 'false', label: 'બંધ (યાદીમાં નહીં દેખાય)' }], String(t.active)) : ''}
-      ${t && isOwner() ? field('કારણ (શરૂઆતની બાકી બદલો તો ફરજિયાત)', 'reason', { attrs: 'maxlength="200"' }) : ''}</div>`,
+      </div>`,
     async onSubmit(form) {
       const d = Object.fromEntries([...form.elements].filter((e) => e.name).map((e) => [e.name, e.value.trim()]));
       const body = { name: d.name, phone: d.phone, note: d.note };

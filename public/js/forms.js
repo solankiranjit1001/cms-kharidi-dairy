@@ -19,9 +19,8 @@ function vegDatalist() {
   return `<datalist id="vegList">${activeVegs().map((v) => `<option value="${esc(v.name)}"></option>`).join('')}</datalist>`;
 }
 
-function reasonField(rec) {
-  return rec ? `<div class="field wide editreason">${''}<label for="f_reason">ફેરફારનું કારણ (ફરજિયાત)</label><input id="f_reason" name="reason" required minlength="2" maxlength="200" autocomplete="off" placeholder="દા.ત. જથ્થો ખોટો લખાયો હતો"></div>` : '';
-}
+// v8: edits no longer ask for a reason (owner's decision). Every change is still recorded in the audit log.
+function reasonField() { return ''; }
 
 function voiceButton() {
   return voiceSupported()
@@ -139,6 +138,7 @@ export async function purchaseForm(rec = null) {
     <div id="lines">${lines.map((l, i) => lineRow(i, l)).join('')}</div>
     <button type="button" class="btn secondary small" data-add-line>＋ બીજું શાક ઉમેરો</button>
     <div class="billtotal">કુલ બિલ: <b data-total>₹0.00</b><span data-mudda></span><br><small class="muted">દરેક રકમ પૂરા રૂપિયામાં રાઉન્ડ ઑફ થાય છે (50 પૈસા કે વધુ = ઉપર)</small></div>
+    ${rec ? '' : `<label class="paidtick"><input type="checkbox" name="paid_full"> <b>રોકડ ચૂકવેલ</b> — આખું બિલ ખરીદી વખતે જ ચૂકવી દીધું <small class="muted">(ટિક ન કરો તો બિલ બાકી રહેશે)</small></label>`}
     <div class="formgrid one">${field('નોંધ', 'note', { value: rec?.note || '', attrs: 'maxlength="300"' })}${reasonField(rec)}</div>`;
   const cid = uuid();
   return openModal({
@@ -215,7 +215,7 @@ export async function purchaseForm(rec = null) {
       };
       let out;
       if (rec) out = await patch(`/records/purchases/${rec.id}`, { ...payload, bill_no: rec.bill_no || '', reason: d.reason });
-      else out = await post('/records/purchases', { ...payload, client_id: cid });
+      else out = await post('/records/purchases', { ...payload, client_id: cid, paid_full: d.paid_full === true });
       if (payload.lines.some((l) => l.createVegetable) || d.trader_id === '__new') await reloadMeta();
       toast(out.duplicate ? 'આ ખરીદી પહેલેથી સેવ થઈ ગઈ હતી.' : `ખરીદી સેવ થઈ — કુલ ${money(out.total_amount)}`);
       return out;
