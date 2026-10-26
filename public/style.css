@@ -172,3 +172,6 @@ dialog::backdrop{background:#201b18a8}
 .resultcard .amount{font-size:34px}
 .periodbtns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}.periodrange{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px}
 .periodres{text-align:center;padding:8px 0 12px}.periodres .amount{font-size:30px;font-weight:800}
+.paidtick{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0;padding:12px 14px;border:2px solid #1a7f37;border-radius:12px;background:#eef8f0;font-size:17px;cursor:pointer}
+.paidtick input{width:24px;height:24px;accent-color:#1a7f37}
+.linkbtn{background:none;border:0;padding:0;color:#00652c;text-decoration:underline;font:inherit;cursor:pointer;text-align:left}
