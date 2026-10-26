@@ -11,8 +11,7 @@ export function recActions(type, r) {
   const b = [];
   if (!r.voided_at && canWrite() && (type !== 'trader_adjustments' || isOwner())) b.push(`<button class="btn light small" data-action="edit" data-type="${type}" data-id="${r.id}">✏️ ફેરફાર</button>`);
   if (!r.voided_at && isOwner()) b.push(`<button class="btn danger small" data-action="void" data-type="${type}" data-id="${r.id}">🗑️ રદ</button>`);
-  b.push(`<button class="btn ghost small" data-action="audit" data-type="${type}" data-id="${r.id}" title="ઇતિહાસ">🕘</button>`);
-  return `<div class="rowactions noprint">${b.join('')}</div>`;
+  return b.length ? `<div class="rowactions noprint">${b.join('')}</div>` : '';
 }
 const voidCls = (r) => (r.voided_at ? ' class="voided"' : '');
 const voidPill = (r) => (r.voided_at ? ` <span class="pill red">રદ: ${esc(r.void_reason || '')}</span>` : '');
@@ -27,7 +26,8 @@ function head(title, sub = '') {
 // ================= HOME =================
 // v6 simple accounting: no item-wise selling, no stock counting. Papa types one sales total per day.
 export async function home(root) {
-  const d = await get(`/dashboard${qs({ date: state.date })}`);
+  const [d, dayBills, allBills] = await Promise.all([get(`/dashboard${qs({ date: state.date })}`),
+    get(`/records/purchases${qs({ unpaid: 1, date: state.date, limit: 300 })}`), get(`/records/purchases${qs({ unpaid: 1, to: state.date, limit: 1000 })}`)]);
   const t = d.totals, y = d.diary;
   const res = Number(y.result);
   root.innerHTML = `${head('આજની ડાયરી')}
@@ -54,7 +54,17 @@ export async function home(root) {
       d.traders_due.map((x) => `<tr><td>${esc(x.name)}</td><td class="${Number(x.balance) > 0 ? 'amber' : 'green'}"><b>${money(x.balance)}</b>${Number(x.balance) < 0 ? ' <small>(એડવાન્સ)</small>' : ''}</td><td>${Number(x.balance) > 0 ? btn('💳 ચુકવો', 'pay', 'secondary small', `data-trader="${x.id}"`) : ''}</td></tr>`),
       { empty: 'કોઈ વેપારીને ચૂકવવાનું બાકી નથી' })}
       <p class="balance">કુલ બાકી: ${money(d.payable)}</p></div>
-  </div>`;
+  </div>
+  <div class="card"><h3 class="sectiontitle">બાકી બિલ — ${gDate(state.date)}</h3>${billTable(dayBills, { empty: 'આ દિવસનું કોઈ બિલ બાકી નથી', date: false })}</div>
+  <div class="card"><h3 class="sectiontitle">કુલ બાકી બિલ (${gDate(state.date)} સુધી, આ દિવસ સહિત)</h3>${billTable(allBills, { empty: 'કોઈ બિલ બાકી નથી' })}</div>`;
+}
+
+/** Unpaid / part-paid bills with a "ચુકવો" button that pays against that exact bill. */
+export function billTable(bills, { empty = 'કોઈ બિલ બાકી નથી', date = true } = {}) {
+  const sum = (k) => bills.reduce((a, p) => a + Number(p[k]), 0);
+  return table([...(date ? ['તારીખ'] : []), 'વેપારી', 'બિલ', 'કુલ', 'ચૂકવેલ', 'બાકી', ''],
+    bills.map((p) => `<tr>${date ? `<td>${gDate(p.entry_date)}</td>` : ''}<td>${esc(p.trader_name)}</td><td>#${p.id}</td><td>${money(p.total_amount)}</td><td>${money(p.paid_amount)}</td><td class="amber"><b>${money(p.due_amount)}</b></td><td>${btn('ચુકવો', 'pay', 'secondary small', `data-trader="${p.trader_id}" data-bill="${p.id}"`)}</td></tr>`),
+    { empty }) + (bills.length ? `<p class="balance">${bills.length} બિલ • કુલ ${money(sum('total_amount'))} • ચૂકવેલ ${money(sum('paid_amount'))} • બાકી <span class="amber">${money(sum('due_amount'))}</span></p>` : '');
 }
 
 export function diaryTable(y) {
@@ -99,20 +109,19 @@ export async function daySaleDialog() {
 
 // ================= PURCHASE =================
 export async function purchase(root) {
-  const [list, unpaid] = await Promise.all([get(`/records/purchases${qs({ date: state.date })}`), get(`/records/purchases${qs({ unpaid: 1, limit: 100 })}`)]);
+  const [list, unpaid] = await Promise.all([get(`/records/purchases${qs({ date: state.date })}`), get(`/records/purchases${qs({ unpaid: 1, date: state.date, limit: 300 })}`)]);
   const total = list.reduce((a, p) => a + Number(p.total_amount), 0);
   root.innerHTML = `${head('શાકભાજી ખરીદી')}
   <div class="card noprint"><div class="actions">${btn('＋ નવી ખરીદી', 'new', 'primary', 'data-type="purchases"')}${btn('↩️ વેપારીને પરત', 'new', 'light', 'data-type="returns"')}</div>
-  <p class="note">એક બિલમાં અનેક શાક ઉમેરી શકાય. રકમ = જથ્થો × દર (સર્વર ગણે છે). બિલ ₹5,000 અને ચૂકવેલ ₹4,000 હોય તો ₹1,000 વેપારીના ખાતામાં બાકી રહે છે — પછી "ચુકવો" થી ચૂકવી શકાય.</p></div>
-  <div class="grid">${metric('આજની ખરીદી', money(total), 'green')}${metric('બિલ', list.length)}${metric('બધા બાકી બિલ', unpaid.length, 'amber')}${metric('બાકી બિલની રકમ', money(unpaid.reduce((a, p) => a + Number(p.due_amount), 0)), 'amber')}</div>
+  <p class="note">એક બિલમાં અનેક શાક ઉમેરી શકાય. રકમ = kg × દર (+ અલગ કમિશન 6% કે 7%). બિલની ચુકવણી નીચે "ચુકવો" થી કરો — બધા દિવસનાં બાકી બિલ હોમ પેજ પર દેખાય છે.</p></div>
+  <div class="grid">${metric('આજની ખરીદી', money(total), 'green')}${metric('બિલ', list.length)}${metric('આજનાં બાકી બિલ', unpaid.length, 'amber')}${metric('આજનાં બાકી બિલની રકમ', money(unpaid.reduce((a, p) => a + Number(p.due_amount), 0)), 'amber')}</div>
   <div class="card"><h3 class="sectiontitle">આજનાં ખરીદી બિલ</h3>${list.length ? list.map(purchaseCard).join('') : '<div class="empty">આજે હજુ ખરીદી નથી</div>'}</div>
-  ${unpaid.length ? `<div class="card"><h3 class="sectiontitle">બાકી / આંશિક ચૂકવેલ બિલ</h3>${table(['તારીખ', 'વેપારી', 'બિલ', 'કુલ', 'ચૂકવેલ', 'બાકી', ''],
-    unpaid.map((p) => `<tr><td>${gDate(p.entry_date)}</td><td>${esc(p.trader_name)}</td><td>#${p.id}${p.bill_no ? ' / ' + esc(p.bill_no) : ''}</td><td>${money(p.total_amount)}</td><td>${money(p.paid_amount)}</td><td class="amber"><b>${money(p.due_amount)}</b></td><td>${btn('ચુકવો', 'pay', 'secondary small', `data-trader="${p.trader_id}"`)}</td></tr>`))}</div>` : ''}`;
+  <div class="card"><h3 class="sectiontitle">બાકી બિલ — ${gDate(state.date)}</h3>${billTable(unpaid, { empty: 'આ દિવસનું કોઈ બિલ બાકી નથી', date: false })}</div>`;
 }
 export function purchaseCard(p) {
   const pill = p.status === 'ચૂકવેલ' ? 'green' : p.status === 'આંશિક' ? 'amber' : 'red';
-  return `<div class="record${p.voided_at ? ' voided' : ''}"><div class="recmain"><strong>${esc(p.trader_name)} <span class="muted">#${p.id}${p.bill_no ? ' • બિલ ' + esc(p.bill_no) : ''}</span>${voidPill(p)}</strong>
-    <div class="lines">${p.lines.map((l) => `<span>${esc(l.vegetable)} ${qty(l.qty, l.unit)}${l.mudda !== null && l.mudda !== undefined ? ` (${l.mudda} મુદ્દા)` : ''} × ${money(l.rate)}${l.commission_excl ? ` + 6% ${money(l.commission_amount)}` : ' <small class="muted">કમિશન ભેગું</small>'} = <b>${money(l.amount)}</b></span>`).join('')}</div>
+  return `<div class="record${p.voided_at ? ' voided' : ''}"><div class="recmain"><strong>${esc(p.trader_name)} <span class="muted">#${p.id}</span>${voidPill(p)}</strong>
+    <div class="lines">${p.lines.map((l) => `<span>${esc(l.vegetable)} ${qty(l.qty, l.unit)}${l.mudda !== null && l.mudda !== undefined ? ` (${l.mudda} મુદ્દા)` : ''} × ${money(l.rate)}${l.commission_excl ? ` + ${l.commission_pct || 6}% ${money(l.commission_amount)}` : ' <small class="muted">કમિશન ભેગું</small>'} = <b>${money(l.amount)}</b></span>`).join('')}</div>
     ${p.total_mudda ? `<small>કુલ મુદ્દા: <b>${p.total_mudda}</b></small>` : ''}
     ${p.note ? `<small>${esc(p.note)}</small>` : ''} ${by(p)}</div>
     <div class="recside"><div class="balance">${money(p.total_amount)}</div><span class="pill ${pill}">${p.status}${p.status !== 'ચૂકવેલ' ? ' • બાકી ' + money(p.due_amount) : ''}</span>${recActions('purchases', p)}</div></div>`;
@@ -195,8 +204,8 @@ export async function traders(root) {
   <div class="card"><h3 class="sectiontitle">વેપારી મુજબ ખાતું</h3>${table(['વેપારી', 'ફોન', 'શરૂઆત', 'ખરીદી', 'પરત', 'ચુકવણી', 'સુધારો', 'બાકી', ''],
     bal.map((t) => `<tr${t.active ? '' : ' class="voided"'}><td><b>${esc(t.name)}</b>${t.active ? '' : ' <span class="pill">બંધ</span>'}</td><td>${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a>` : '—'}</td><td>${money(t.opening_balance)}</td><td>${money(t.purchases)}</td><td>${money(t.returns)}</td><td>${money(t.payments)}</td><td>${money(t.adjustments)}</td><td class="${Number(t.balance) > 0 ? 'amber' : 'green'}"><b>${money(t.balance)}</b></td>
       <td><div class="rowactions"><button class="btn light small" data-action="statement" data-id="${t.id}">📒 ખાતું</button>${btn('💳', 'pay', 'secondary small', `data-trader="${t.id}" title="ચુકવણી"`)}${canWrite() ? `<button class="btn ghost small" data-action="trader-edit" data-id="${t.id}">✏️</button>` : ''}</div></td></tr>`), { empty: 'હજુ કોઈ વેપારી નથી' })}</div>
-  <div class="card"><h3 class="sectiontitle">આજની ચુકવણીઓ</h3>${table(['વેપારી', 'રકમ', 'માધ્યમ', 'રેફરન્સ', 'બિલ', 'નોંધ', ''],
-    pays.map((x) => `<tr${voidCls(x)}><td>${esc(x.trader_name)}${voidPill(x)}</td><td><b>${money(x.amount)}</b></td><td>${esc(x.method)}</td><td>${esc(x.reference || '')}</td><td>${x.purchase_id ? '#' + x.purchase_id : '—'}</td><td>${esc(x.note || '')} ${by(x)}</td><td>${recActions('payments', x)}</td></tr>`))}</div>`;
+  <div class="card"><h3 class="sectiontitle">આજની ચુકવણીઓ</h3>${table(['વેપારી', 'રકમ', 'બિલ', 'નોંધ', ''],
+    pays.map((x) => `<tr${voidCls(x)}><td>${esc(x.trader_name)}${voidPill(x)}</td><td><b>${money(x.amount)}</b></td><td>${x.purchase_id ? '#' + x.purchase_id : '—'}</td><td>${esc(x.note || '')} ${by(x)}</td><td>${recActions('payments', x)}</td></tr>`))}</div>`;
 }
 
 export async function statementDialog(id) {
@@ -281,23 +290,6 @@ export async function plan(root) {
   root.innerHTML = `${head('આવતીકાલનું આયોજન')}
   <div class="card noprint">${btn('＋ આયોજન ઉમેરો', 'new', 'primary', 'data-type="plans"')}<p class="note">આવતીકાલે શું, કેટલું અને કયા ભાવે ખરીદવું — તેની નોંધ. આ હિસાબમાં ગણાતું નથી.</p></div>
   <div class="card">${table(['તારીખ', 'શાક', 'લક્ષ્ય જથ્થો', 'લક્ષ્ય ભાવ', 'નોંધ', ''], list.slice().reverse().map((x) => `<tr><td>${gDate(x.plan_date)}</td><td>${esc(x.vegetable)}</td><td>${x.qty ? qty(x.qty, x.veg_unit) : '—'}</td><td>${x.rate ? money(x.rate) : '—'}</td><td>${esc(x.note || '')}</td><td>${recActions('plans', x)}</td></tr>`), { empty: 'આગળનું કોઈ આયોજન નથી' })}</div>`;
-}
-
-// ================= HISTORY =================
-export async function historyPage(root) {
-  const types = [{ value: '', label: 'બધા પ્રકાર' }, ...Object.entries(TYPE_LABEL).filter(([k]) => !['plans', 'sales', 'waste', 'adjustments'].includes(k)).map(([value, label]) => ({ value, label }))];
-  root.innerHTML = `${head('ઇતિહાસ અને સુધારા')}
-  <div class="card noprint"><div class="formgrid">${field('શોધો (શાક / વેપારી / નોંધ)', 'hq', { attrs: 'autocomplete="off"' })}
-    ${selectField('પ્રકાર', 'htype', types, '')}${field('તારીખથી', 'hfrom', { type: 'date' })}${field('તારીખ સુધી', 'hto', { type: 'date' })}
-    <div class="field"><label><input type="checkbox" id="f_hvoid"> રદ કરેલી એન્ટ્રી પણ બતાવો</label></div></div>
-    <button class="btn primary" data-action="history-search">🔍 શોધો</button></div>
-  <div class="card" id="historyOut"><div class="empty">શોધ દબાવો</div></div>`;
-  await historySearch();
-}
-export async function historySearch() {
-  const rows = await get(`/history${qs({ q: $('#f_hq').value, type: $('#f_htype').value, from: $('#f_hfrom').value, to: $('#f_hto').value, includeVoided: $('#f_hvoid').checked ? 1 : '' })}`);
-  $('#historyOut').innerHTML = `<div class="sub">${rows.length} એન્ટ્રી${rows.length >= 400 ? ' (પહેલી 400 — શોધ નાની કરો)' : ''}</div>` + table(['તારીખ', 'પ્રકાર', 'વિગત', 'જથ્થો', 'રકમ', ''],
-    rows.map((r) => `<tr${voidCls(r)}><td>${gDate(r.d)}</td><td>${esc(TYPE_LABEL[r.type] || r.type)}${r.voided_at ? ' <span class="pill red">રદ</span>' : ''}</td><td>${esc(r.detail)}</td><td>${r.qty === null ? '' : num(r.qty)}</td><td>${r.amount === null ? '' : money(r.amount)}</td><td>${recActions(r.type, r)}</td></tr>`));
 }
 
 export async function auditDialog(type, id) {
