@@ -28,7 +28,7 @@ function head(title, sub = '') {
 export async function home(root) {
   const pr = periodRange();
   const h = await get(`/home${qs({ date: state.date, pfrom: pr.from, pto: pr.to })}`);
-  const d = h.dashboard, dayBills = h.day_bills, allBills = h.all_bills;
+  const d = h.dashboard, dayBills = h.day_bills;
   const t = d.totals, y = d.diary;
   const res = Number(y.result);
   root.innerHTML = `${head('આજની ડાયરી')}
@@ -59,8 +59,7 @@ export async function home(root) {
       { empty: 'કોઈ વેપારીને ચૂકવવાનું બાકી નથી' })}
       <p class="balance">કુલ બાકી: ${money(d.payable)}</p></div>
   </div>
-  <div class="card"><h3 class="sectiontitle">બાકી બિલ — ${gDate(state.date)}</h3>${billTable(dayBills, { empty: 'આ દિવસનું કોઈ બિલ બાકી નથી', date: false })}</div>
-  <div class="card"><h3 class="sectiontitle">કુલ બાકી બિલ (${gDate(state.date)} સુધી, આ દિવસ સહિત)</h3>${billTable(allBills, { empty: 'કોઈ બિલ બાકી નથી' })}</div>`;
+  <div class="card"><h3 class="sectiontitle">બાકી બિલ — ${gDate(state.date)}</h3>${billTable(dayBills, { empty: 'આ દિવસનું કોઈ બિલ બાકી નથી', date: false })}</div>`;
   if (h.period && !h.period.error) showPeriod(pr, h.period); else await periodResult();
 }
 
