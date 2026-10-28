@@ -1,0 +1,80 @@
+From 19691c7853ab4f965ae42bc8f72b0c111d3d2d9c Mon Sep 17 00:00:00 2001
+From: solankiranjit1001 <solankiranjit1001@gmail.com>
+Date: Wed, 28 Oct 2026 12:49:09 +0000
+Subject: [PATCH] Pay popup: show vepari's total baaki (v8.3)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01G9ABUepP7zxHyDyAGwx6Sj
+---
+ public/js/forms.js | 18 +++++++++++++++---
+ public/style.css   |  2 ++
+ public/sw.js       |  2 +-
+ 3 files changed, 18 insertions(+), 4 deletions(-)
+
+diff --git a/public/js/forms.js b/public/js/forms.js
+index e24e567..268be3e 100644
+--- a/public/js/forms.js
++++ b/public/js/forms.js
+@@ -353,12 +353,22 @@ export async function paymentForm(rec = null, traderId = null, billId = null) {
+       ${field('નોંધ', 'note', { value: rec?.note || '', attrs: 'maxlength="300"' })}`,
+     onOpen(form) {
+       let bills = [];
++      let balances = null; // trader-wise total baaki (all dates)
+       const showDue = () => {
+         const box = $('[data-billdue]', form);
++        const tid = form.trader_id.value;
++        const t = balances?.find((x) => String(x.id) === tid);
+         const b = bills.find((x) => String(x.id) === form.purchase_id.value);
+-        if (!b) { box.hidden = true; return; }
+-        box.hidden = false;
+-        box.innerHTML = `બિલ #${b.id} • ${esc(gDate(b.entry_date))} • કુલ ${money(b.total_amount)} • ચૂકવેલ ${money(b.paid_amount)}<br>બાકી રકમ: <b class="amber">${money(b.due_amount)}</b>`;
++        const parts = [];
++        if (t) {
++          const bal = Number(t.balance);
++          parts.push(bal < 0
++            ? `${esc(t.name)} — એડવાન્સ: <b class="green">${money(-bal)}</b>`
++            : `${esc(t.name)} — કુલ બાકી: <b class="amber">${money(bal)}</b>`);
++        }
++        if (b) parts.push(`બિલ #${b.id} • ${esc(gDate(b.entry_date))} • કુલ ${money(b.total_amount)} • ચૂકવેલ ${money(b.paid_amount)}<br>આ બિલની બાકી રકમ: <b class="amber">${money(b.due_amount)}</b>`);
++        box.hidden = !parts.length;
++        box.innerHTML = parts.join('<hr>');
+       };
+       const load = async () => {
+         const sel = $('[data-bills]', form);
+@@ -367,6 +377,8 @@ export async function paymentForm(rec = null, traderId = null, billId = null) {
+         sel.innerHTML = '<option value="">— ખાતામાં સામાન્ય ચુકવણી (જૂનાં બિલ પહેલાં) —</option>';
+         bills = [];
+         if (!tid || tid === '__new') return showDue();
++        if (!balances) { try { balances = await get('/traders'); } catch { /* optional */ } }
++        showDue();
+         try {
+           bills = await get(`/records/purchases${qs({ trader_id: tid, unpaid: 1, limit: 100 })}`);
+           for (const b of bills) sel.insertAdjacentHTML('beforeend', `<option value="${b.id}">#${b.id} • ${esc(gDate(b.entry_date))} • બાકી ${money(b.due_amount)}</option>`);
+diff --git a/public/style.css b/public/style.css
+index 89d3ffa..d1366b6 100644
+--- a/public/style.css
++++ b/public/style.css
+@@ -80,6 +80,8 @@ table.diary td:last-child{text-align:right;white-space:nowrap}
+ .formsub{margin:14px 0 8px;font-size:15px}
+ .note{font-size:13px;color:var(--muted);line-height:1.7}
+ .cashbox{background:#eff6ff;color:#1e3a8a;border-radius:10px;padding:10px 12px;font-size:14px;margin-top:8px}
++.billdue{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;font-size:15px;line-height:1.6}
++.billdue hr{border:0;border-top:1px dashed #fdba74;margin:6px 0}
+ footer{text-align:center;padding:18px;color:var(--muted);font-size:12px}
+ .record{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:8px}
+ .record.voided{opacity:.6}
+diff --git a/public/sw.js b/public/sw.js
+index df43750..7ab9fd6 100644
+--- a/public/sw.js
++++ b/public/sw.js
+@@ -1,6 +1,6 @@
+ // v5: network-first for the app shell (so updates arrive immediately), cache only as an offline fallback.
+ // API calls (/api/*) are never cached — financial data always comes live from the server.
+-const CACHE = 'cms-kharidi-v8.2';
++const CACHE = 'cms-kharidi-v8.3';
+ const SHELL = ['/', '/index.html', '/style.css', '/manifest.webmanifest', '/icon.svg',
+   '/js/main.js', '/js/api.js', '/js/ui.js', '/js/state.js', '/js/forms.js', '/js/pages.js', '/js/reports.js', '/js/settings.js', '/js/market-ref.js', '/js/credit.js'];
+ 
+-- 
+2.43.0
+
