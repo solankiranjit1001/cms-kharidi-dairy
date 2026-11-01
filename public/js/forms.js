@@ -360,15 +360,18 @@ export async function paymentForm(rec = null, traderId = null, billId = null) {
         const t = balances?.find((x) => String(x.id) === tid);
         const b = bills.find((x) => String(x.id) === form.purchase_id.value);
         const parts = [];
-        if (t) {
-          const bal = Number(t.balance);
-          parts.push(bal < 0
-            ? `${esc(t.name)} — એડવાન્સ: <b class="green">${money(-bal)}</b>`
-            : `${esc(t.name)} — કુલ બાકી: <b class="amber">${money(bal)}</b>`);
+        const bal = t ? Number(t.balance) : null;
+        if (t) parts.push(bal < 0
+          ? `${esc(t.name)} — એડવાન્સ: <b class="green">${money(-bal)}</b>`
+          : `${esc(t.name)} — કુલ બાકી: <b class="amber">${money(bal)}</b>`);
+        if (b) {
+          // merged: bill due is shown only when it differs from the trader total
+          const same = t && Number(b.due_amount) === bal;
+          parts.push(`બિલ #${b.id} • ${esc(gDate(b.entry_date))} • કુલ ${money(b.total_amount)} • ચૂકવેલ ${money(b.paid_amount)}`
+            + (same ? '' : ` • આ બિલની બાકી: <b class="amber">${money(b.due_amount)}</b>`));
         }
-        if (b) parts.push(`બિલ #${b.id} • ${esc(gDate(b.entry_date))} • કુલ ${money(b.total_amount)} • ચૂકવેલ ${money(b.paid_amount)}<br>આ બિલની બાકી રકમ: <b class="amber">${money(b.due_amount)}</b>`);
         box.hidden = !parts.length;
-        box.innerHTML = parts.join('<hr>');
+        box.innerHTML = `<div>${parts.join('<br>')}</div>`; // one block so text + amounts flow on the same line
       };
       const load = async () => {
         const sel = $('[data-bills]', form);
