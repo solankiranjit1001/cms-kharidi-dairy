@@ -80,6 +80,8 @@ table.diary td:last-child{text-align:right;white-space:nowrap}
 .formsub{margin:14px 0 8px;font-size:15px}
 .note{font-size:13px;color:var(--muted);line-height:1.7}
 .cashbox{background:#eff6ff;color:#1e3a8a;border-radius:10px;padding:10px 12px;font-size:14px;margin-top:8px}
+.billdue{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;font-size:15px;line-height:1.6}
+.billdue hr{border:0;border-top:1px dashed #fdba74;margin:6px 0}
 footer{text-align:center;padding:18px;color:var(--muted);font-size:12px}
 .record{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:8px}
 .record.voided{opacity:.6}
