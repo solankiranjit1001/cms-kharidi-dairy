@@ -353,12 +353,22 @@ export async function paymentForm(rec = null, traderId = null, billId = null) {
       ${field('નોંધ', 'note', { value: rec?.note || '', attrs: 'maxlength="300"' })}`,
     onOpen(form) {
       let bills = [];
+      let balances = null; // trader-wise total baaki (all dates)
       const showDue = () => {
         const box = $('[data-billdue]', form);
+        const tid = form.trader_id.value;
+        const t = balances?.find((x) => String(x.id) === tid);
         const b = bills.find((x) => String(x.id) === form.purchase_id.value);
-        if (!b) { box.hidden = true; return; }
-        box.hidden = false;
-        box.innerHTML = `બિલ #${b.id} • ${esc(gDate(b.entry_date))} • કુલ ${money(b.total_amount)} • ચૂકવેલ ${money(b.paid_amount)}<br>બાકી રકમ: <b class="amber">${money(b.due_amount)}</b>`;
+        const parts = [];
+        if (t) {
+          const bal = Number(t.balance);
+          parts.push(bal < 0
+            ? `${esc(t.name)} — એડવાન્સ: <b class="green">${money(-bal)}</b>`
+            : `${esc(t.name)} — કુલ બાકી: <b class="amber">${money(bal)}</b>`);
+        }
+        if (b) parts.push(`બિલ #${b.id} • ${esc(gDate(b.entry_date))} • કુલ ${money(b.total_amount)} • ચૂકવેલ ${money(b.paid_amount)}<br>આ બિલની બાકી રકમ: <b class="amber">${money(b.due_amount)}</b>`);
+        box.hidden = !parts.length;
+        box.innerHTML = parts.join('<hr>');
       };
       const load = async () => {
         const sel = $('[data-bills]', form);
@@ -367,6 +377,8 @@ export async function paymentForm(rec = null, traderId = null, billId = null) {
         sel.innerHTML = '<option value="">— ખાતામાં સામાન્ય ચુકવણી (જૂનાં બિલ પહેલાં) —</option>';
         bills = [];
         if (!tid || tid === '__new') return showDue();
+        if (!balances) { try { balances = await get('/traders'); } catch { /* optional */ } }
+        showDue();
         try {
           bills = await get(`/records/purchases${qs({ trader_id: tid, unpaid: 1, limit: 100 })}`);
           for (const b of bills) sel.insertAdjacentHTML('beforeend', `<option value="${b.id}">#${b.id} • ${esc(gDate(b.entry_date))} • બાકી ${money(b.due_amount)}</option>`);
