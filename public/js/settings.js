@@ -2,6 +2,7 @@
 import { $, esc, money, gDate, dateTime, table, field, selectField, openModal, toast, download, confirmBox } from './ui.js';
 import { get, post, patch } from './api.js';
 import { state, ROLE_LABEL, isOwner, reloadMeta } from './state.js';
+import { ownerSettingsCard } from './messages.js';
 
 const LEGACY_KEYS = [
   { key: 'cmsKharidiDiaryV4', label: 'જૂની એપ V4' },
@@ -29,6 +30,7 @@ export async function settings(root) {
         ${selectField('CSV એક્સપોર્ટ', 'csvtable', [['purchases', 'ખરીદી'], ['purchase_lines', 'ખરીદી પંક્તિઓ'], ['sales', 'વેચાણ'], ['waste', 'બગાડ'], ['payments', 'ચુકવણી'], ['expenses', 'ખર્ચ'], ['market_prices', 'બજાર ભાવ'], ['traders', 'વેપારી'], ['day_closings', 'ક્લોઝિંગ મૂલ્ય']].map(([value, label]) => ({ value, label })), 'purchases', { cls: 'inline' })}
         <button class="btn light" data-action="csv">CSV ⬇️</button></div>` : ''}</div>
   </div>
+  ${ownerSettingsCard()}
   ${owner ? `
   <div class="card"><h3 class="sectiontitle">પરિવારના સભ્યો (લોગિન)</h3>
     <button class="btn primary" data-action="user-new">＋ સભ્ય ઉમેરો</button>
@@ -45,7 +47,7 @@ export async function settings(root) {
     <div class="field"><label for="importFile">અથવા જૂની એપની JSON બેકઅપ ફાઇલ પસંદ કરો</label><input type="file" id="importFile" accept="application/json,.json"></div>
     <div id="importOut"></div></div>
   <div class="card"><h3 class="sectiontitle">ફેરફાર ઇતિહાસ (છેલ્લા 300)</h3>${table(['સમય', 'કોણે', 'શું', 'ક્યાં', 'કારણ'], audit.map((a) => `<tr><td>${dateTime(a.at)}</td><td>${esc(a.user_name || '')}</td><td>${esc(a.action)}</td><td>${esc(a.entity)} #${esc(a.entity_id || '')}</td><td>${esc(a.reason || '')}</td></tr>`))}</div>` : ''}
-  <p class="note center">CMS ખરીદી ડાયરી • આવૃત્તિ 5</p>`;
+  <p class="note center">CMS ખરીદી ડાયરી • આવૃત્તિ 9</p>`;
 
   const fileInput = $('#importFile');
   if (fileInput) fileInput.addEventListener('change', async () => {
