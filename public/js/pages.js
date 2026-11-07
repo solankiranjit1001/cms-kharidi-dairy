@@ -10,6 +10,7 @@ export function recActions(type, r) {
   if (type === 'day_sales') return '';
   const b = [];
   if (!r.voided_at && canWrite() && (type !== 'trader_adjustments' || isOwner())) b.push(`<button class="btn light small" data-action="edit" data-type="${type}" data-id="${r.id}">✏️ ફેરફાર</button>`);
+  if (!r.voided_at && canWrite() && (type === 'purchases' || type === 'payments')) b.push(`<button class="btn light small" data-action="msg" data-type="${type}" data-id="${r.id}">📩 મેસેજ</button>`);
   if (!r.voided_at && isOwner()) b.push(`<button class="btn danger small" data-action="void" data-type="${type}" data-id="${r.id}">🗑️ રદ</button>`);
   return b.length ? `<div class="rowactions noprint">${b.join('')}</div>` : '';
 }
@@ -261,7 +262,7 @@ export async function traders(root) {
   <div class="grid">${metric('કુલ બાકી', money(due), 'amber')}${metric('વેપારીઓ', bal.filter((b) => b.active).length)}${metric('આજની ચુકવણી', money(pays.reduce((a, p) => a + Number(p.amount), 0)), 'blue')}${metric('એડવાન્સ', money(bal.reduce((a, b) => a + Math.max(0, -Number(b.balance)), 0)), 'green')}</div>
   <div class="card"><h3 class="sectiontitle">વેપારી મુજબ ખાતું</h3>${table(['વેપારી', 'ફોન', 'શરૂઆત', 'ખરીદી', 'પરત', 'ચુકવણી', 'સુધારો', 'બાકી', ''],
     bal.map((t) => `<tr${t.active ? '' : ' class="voided"'}><td><b>${esc(t.name)}</b>${t.active ? '' : ' <span class="pill">બંધ</span>'}</td><td>${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a>` : '—'}</td><td>${money(t.opening_balance)}</td><td>${money(t.purchases)}</td><td>${money(t.returns)}</td><td>${money(t.payments)}</td><td>${money(t.adjustments)}</td><td class="${Number(t.balance) > 0 ? 'amber' : 'green'}"><b>${money(t.balance)}</b></td>
-      <td><div class="rowactions"><button class="btn light small" data-action="statement" data-id="${t.id}">📒 ખાતું</button>${btn('💳', 'pay', 'secondary small', `data-trader="${t.id}" title="ચુકવણી"`)}${canWrite() ? `<button class="btn ghost small" data-action="trader-edit" data-id="${t.id}">✏️</button>` : ''}</div></td></tr>`), { empty: 'હજુ કોઈ વેપારી નથી' })}</div>
+      <td><div class="rowactions"><button class="btn light small" data-action="statement" data-id="${t.id}">📒 ખાતું</button>${btn('💳', 'pay', 'secondary small', `data-trader="${t.id}" title="ચુકવણી"`)}${btn('📩', 'msg', 'light small', `data-type="traders" data-id="${t.id}" title="હિસાબનો મેસેજ"`)}${btn('👥', 'contacts', 'light small', `data-id="${t.id}" data-name="${esc(t.name)}" title="માણસો / મોબાઇલ"`)}${canWrite() ? `<button class="btn ghost small" data-action="trader-edit" data-id="${t.id}">✏️</button>` : ''}</div></td></tr>`), { empty: 'હજુ કોઈ વેપારી નથી' })}</div>
   <div class="card"><h3 class="sectiontitle">આજની ચુકવણીઓ</h3>${table(['વેપારી', 'રકમ', 'બિલ', 'નોંધ', ''],
     pays.map((x) => `<tr${voidCls(x)}><td>${esc(x.trader_name)}${voidPill(x)}</td><td><b>${money(x.amount)}</b></td><td>${x.purchase_id ? '#' + x.purchase_id : '—'}</td><td>${esc(x.note || '')} ${by(x)}</td><td>${recActions('payments', x)}</td></tr>`))}</div>`;
 }
@@ -282,7 +283,7 @@ export async function traderDialog(t = null) {
   return openModal({
     title: t ? `વેપારી સુધારો — ${esc(t.name)}` : '＋ નવો વેપારી',
     body: `<div class="formgrid">${field('વેપારીનું નામ', 'name', { value: t?.name || '', attrs: 'required maxlength="80" autocomplete="off"' })}
-      ${field('ફોન (વૈકલ્પિક)', 'phone', { type: 'tel', value: t?.phone || '', attrs: 'maxlength="16"' })}
+      ${t ? '<p class="note wide">મોબાઇલ નંબર અને વેપારીના માણસો 👥 બટનથી ઉમેરો / સુધારો.</p>' : field('મોબાઇલ (વૈકલ્પિક)', 'phone', { type: 'tel', value: '', attrs: 'maxlength="16"' })}
       ${isOwner() ? numField('શરૂઆતની બાકી ₹ (માઇનસ = એડવાન્સ)', 'opening_balance', t ? Number(t.opening_balance) : '', { required: false, min: null }) : ''}
       ${field('નોંધ', 'note', { value: t?.note || '', attrs: 'maxlength="200"' })}
       ${t && isOwner() ? selectField('સ્થિતિ', 'active', [{ value: 'true', label: 'ચાલુ' }, { value: 'false', label: 'બંધ (યાદીમાં નહીં દેખાય)' }], String(t.active)) : ''}

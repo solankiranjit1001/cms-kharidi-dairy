@@ -7,6 +7,7 @@ import * as P from './pages.js';
 import { reports, showReport } from './reports.js';
 import * as S from './settings.js';
 import { creditPage, creditActions, resetCredit } from './credit.js';
+import * as M from './messages.js';
 
 const PAGES = {
   home: { label: '🏠 હોમ', render: P.home },
@@ -125,8 +126,12 @@ const ACTIONS = {
   go: (el) => { if (el.dataset.page === 'credit') resetCredit(); go(el.dataset.page); },
   reload: () => render(),
   print: () => window.print(),
-  new: (el) => reloadAfter(FORMS[el.dataset.type]()),
-  pay: (el) => reloadAfter(FORMS.payments(null, Number(el.dataset.trader), el.dataset.bill ? Number(el.dataset.bill) : null)),
+  // v9: after a NEW purchase / payment, the message to the trader opens by itself when automatic messages are on
+  new: (el) => reloadAfter(FORMS[el.dataset.type]().then((r) => M.autoAfterSave(el.dataset.type, r))),
+  pay: (el) => reloadAfter(FORMS.payments(null, Number(el.dataset.trader), el.dataset.bill ? Number(el.dataset.bill) : null).then((r) => M.autoAfterSave('payments', r))),
+  msg: (el) => M.messageDialog(el.dataset.type, el.dataset.id),
+  contacts: (el) => reloadAfter(M.contactsDialog(el.dataset.id, el.dataset.name || '').then(async (r) => { if (r) await reloadMeta(); return r; })),
+  'msg-settings': () => reloadAfter(M.settingsDialog()),
   async edit(el) {
     const { type, id } = el.dataset;
     const rec = await get(`/records/${type}/${id}`);
