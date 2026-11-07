@@ -22,20 +22,20 @@ test('money, dates and balance lines', () => {
 
 test('purchase bill message: lines, commission, mudda, part payment, total baaki', () => {
   const t = purchaseText(bill, '21585.00', 'CMS');
-  assert.ok(t.startsWith('નમસ્તે મહેશભાઈ,\nખરીદી બિલ #12 — 07-11-2026\n'));
+  assert.ok(t.startsWith('નમસ્તે મહેશભાઈ,\nતારીખ - 07-11-2026\n'));
   assert.ok(t.includes('મરચાં 50 kg × ₹60 = ₹3,000'));
   assert.ok(t.includes('ડુંગળી 200.5 kg (12 મુદ્દા) × ₹10.25 + 7% = ₹2,000'));
   assert.ok(t.includes('કુલ બિલ: ₹5,000\nચૂકવ્યા: ₹4,000\nઆ બિલની બાકી: ₹1,000\nતમારી કુલ બાકી: ₹21,585'));
-  assert.ok(t.endsWith('\n— CMS'));
+  assert.ok(t.endsWith('\nCMS'));
   const paid = purchaseText({ ...bill, paid_amount: '5000.00', due_amount: '0.00' }, '0', '');
   assert.ok(paid.includes('ચૂકવ્યા: ₹5,000 (આખું બિલ ચૂકવેલ)'));
-  assert.ok(!paid.includes('—  ') && !paid.endsWith('— '));
+  assert.ok(paid.endsWith('તમારો હિસાબ પૂરો — કોઈ બાકી નથી.'));
   const unpaid = purchaseText({ ...bill, paid_amount: '0.00', due_amount: '5000.00' }, '5000', 'CMS');
   assert.ok(!unpaid.includes('ચૂકવ્યા'));
 });
 
 test('payment and account messages', () => {
   const p = paymentText({ trader_name: 'JK', amount: '1000.00', method: 'UPI', entry_date: '2026-11-07', purchase_id: 12, reference: null }, '3026.00', 'CMS');
-  assert.equal(p, 'નમસ્તે JK,\nતમને ₹1,000 ચૂકવ્યા — 07-11-2026 (UPI)\nબિલ #12 સામે\nતમારી કુલ બાકી: ₹3,026\n— CMS');
-  assert.equal(balanceText({ name: 'JK' }, '4026.00', '2026-11-07', ''), 'નમસ્તે JK,\n07-11-2026 સુધીનો હિસાબ:\nતમારી કુલ બાકી: ₹4,026');
+  assert.equal(p, 'નમસ્તે JK,\nતારીખ - 07-11-2026\nચૂકવ્યા: ₹1,000 (UPI)\nતમારી કુલ બાકી: ₹3,026\nCMS');
+  assert.equal(balanceText({ name: 'JK' }, '4026.00', '2026-11-07', ''), 'નમસ્તે JK,\nતારીખ - 07-11-2026\nતમારી કુલ બાકી: ₹4,026');
 });
