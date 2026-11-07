@@ -93,13 +93,18 @@ export async function showReport() {
 /** Printable daily diary: A4 landscape — purchases, day's sales total, payments, expenses and the day's result. */
 export async function diarySheet(date) {
   const d = encodeURIComponent(date);
-  const [dash, pur, exp, pays] = await Promise.all([
-    get(`/dashboard?date=${d}`), get(`/records/purchases?date=${d}`), get(`/records/expenses?date=${d}`), get(`/records/payments?date=${d}`)]);
+  const [dash, pur, exp, pays, cr] = await Promise.all([
+    get(`/dashboard?date=${d}`), get(`/records/purchases?date=${d}`), get(`/records/expenses?date=${d}`), get(`/records/payments?date=${d}`),
+    get(`/credit/day?date=${d}`).catch(() => ({ entries: [], credit: '0', received: '0' }))]);
   const y = dash.diary;
   const blank = (n, cols) => Array.from({ length: Math.max(0, n) }, () => `<tr class="blankrow">${'<td>&nbsp;</td>'.repeat(cols)}</tr>`).join('');
   const purRows = pur.flatMap((p) => p.lines.map((l) => `<tr><td>${esc(p.trader_name)}</td><td>${esc(l.vegetable)}</td><td>${l.mudda ?? ''}</td><td>${num(l.qty)} ${esc(l.unit)}</td><td>${money(l.rate)}${l.commission_excl ? ` +${l.commission_pct || 6}%` : ''}</td><td>${money(l.amount)}</td></tr>`));
   const totKg = pur.reduce((a, p) => a + p.lines.reduce((b, l) => b + Number(l.qty), 0), 0);
   const totMudda = pur.reduce((a, p) => a + p.lines.reduce((b, l) => b + (Number(l.mudda) || 0), 0), 0);
+  // v9.2: ભાગ E — the day's ઉધાર (separate book; not part of the day result)
+  const crRows = cr.entries.map((e) => `<tr><td>${esc(e.customer)}</td><td>${e.kind === 'credit'
+    ? e.lines.map((l) => `${esc(l.item)} ${num(l.qty)}kg × ${money(l.rate)}`).join(', ') : 'પૈસા મળ્યા'}${e.note ? ` • ${esc(e.note)}` : ''}</td>
+    <td>${e.kind === 'credit' ? money(e.amount) : ''}</td><td>${e.kind === 'receipt' ? money(e.amount) : ''}</td></tr>`);
   const payRows = pays.map((x) => `<tr><td>${esc(x.trader_name)}</td><td>${x.purchase_id ? '#' + x.purchase_id : ''}</td><td>${money(x.amount)}</td></tr>`);
   return `<div class="diarysheet">
     <div class="ds-head"><div><b>CMS દૈનિક શાકભાજી ખરીદી ડાયરી — ભાવનગર</b></div><div>તારીખ: <b>${gDate(date)}</b> • ${weekday(date)}</div></div>
@@ -118,7 +123,10 @@ export async function diarySheet(date) {
           ${exp.map((x) => `<tr><td>${esc(x.category)}</td><td>${esc(x.note || '')}</td><td>${money(x.amount)}</td></tr>`).join('')}
           ${blank(3, 3)}</tbody></table>
       </section>
-      <section class="ds-part"><h4>આજનો હિસાબ</h4>${diaryTable(y)}
+      <section class="ds-part"><h4>ભાગ E — આજનું ઉધાર</h4>
+        <table><thead><tr><th>ગ્રાહક</th><th>વસ્તુ</th><th>ઉધાર</th><th>મળેલ</th></tr></thead><tbody>${crRows.join('')}${blank(3 - crRows.length, 4)}</tbody>
+        <tfoot><tr><td colspan="2">આજનું કુલ</td><td><b>${money(cr.credit)}</b></td><td><b>${money(cr.received)}</b></td></tr></tfoot></table>
+        <h4>આજનો હિસાબ</h4>${diaryTable(y)}
         <div class="signs"><span>લખનાર: ____________</span><span>ચકાસનાર: ____________</span></div>
       </section>
     </div></div>`;
