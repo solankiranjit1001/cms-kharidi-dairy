@@ -48,14 +48,14 @@ test('message text for purchase, payment and trader account', async () => {
   assert.equal(r.status, 200, JSON.stringify(r.data));
   assert.equal(r.data.trader.name, 'મહેશભાઈ');
   assert.deepEqual(r.data.contacts, []);
-  assert.ok(r.data.text.includes(`ખરીદી બિલ #${bill.id} — 05-11-2026`));
+  assert.ok(r.data.text.includes('તારીખ - 05-11-2026'));
   assert.ok(r.data.text.includes('કુલ બિલ: ₹5,000\nચૂકવ્યા: ₹4,000\nઆ બિલની બાકી: ₹1,000\nતમારી કુલ બાકી: ₹1,000'));
-  assert.ok(r.data.text.endsWith('— CMS'));
+  assert.ok(r.data.text.endsWith('\nCMS'));
 
   r = await o.post('/records/payments', { client_id: uuid(), entry_date: D, trader_id: bill.trader_id, amount: '1000', method: 'UPI', purchase_id: bill.id });
   assert.equal(r.status, 201, JSON.stringify(r.data));
   r = await o.get(`/messages/payments/${r.data.id}`);
-  assert.ok(r.data.text.includes('તમને ₹1,000 ચૂકવ્યા — 05-11-2026 (UPI)'));
+  assert.ok(r.data.text.includes('તારીખ - 05-11-2026\nચૂકવ્યા: ₹1,000 (UPI)'));
   assert.ok(r.data.text.includes('હિસાબ પૂરો'));
 
   r = await o.get(`/messages/traders/${bill.trader_id}`);
