@@ -201,3 +201,4 @@ body.netbusy::before{opacity:1;animation:loadbar 1.2s ease-in-out infinite}
 .contactrow{display:grid;grid-template-columns:1.2fr 1fr 1.2fr auto auto;gap:8px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px}
 .contactrow .paidtick{margin:0;padding:8px 10px;font-size:14px}
 @media (max-width:700px){.contactrow{grid-template-columns:1fr 1fr}.contactrow .field:nth-child(3){grid-column:1/-1}}
+.modaltitle:focus{outline:none}
