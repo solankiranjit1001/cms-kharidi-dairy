@@ -202,3 +202,16 @@ body.netbusy::before{opacity:1;animation:loadbar 1.2s ease-in-out infinite}
 .contactrow .paidtick{margin:0;padding:8px 10px;font-size:14px}
 @media (max-width:700px){.contactrow{grid-template-columns:1fr 1fr}.contactrow .field:nth-child(3){grid-column:1/-1}}
 .modaltitle:focus{outline:none}
+/* v10: ઘર ખર્ચ (Khatabook-style cash book) */
+.hbbig{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 14px}
+.hbbig .btn{font-size:20px;padding:16px;border-radius:14px;color:#fff}
+.btn.hbin{background:#15803d}.btn.hbout{background:#b91c1c}
+.hbday{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.hbdayhead{display:flex;justify-content:space-between;gap:8px;padding:8px 12px;background:var(--soft);font-size:14px}
+.hbrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid var(--line)}
+.hbrow.income{background:#f0fdf4}
+.hbamt{font-weight:700;font-size:17px;white-space:nowrap}
+.hbmode{display:flex;gap:8px;flex-wrap:wrap}.hbmode .paidtick{margin:0}
+.hbchips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+@media (max-width:600px){.hbrow{grid-template-columns:1fr auto}.hbrow .rowactions{grid-column:1/-1;justify-content:flex-end}}
+.hbheads table{min-width:0}
