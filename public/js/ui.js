@@ -86,7 +86,8 @@ export function openModal({ title, body, saveLabel = 'સેવ કરો', onSu
   const form = old.cloneNode(true);
   old.replaceWith(form);
   dlg.classList.toggle('wide', wide);
-  $('#modalContent').innerHTML = `<h3>${title}</h3>${body}<div class="formerror" role="alert" hidden></div>`;
+  // v9.2: the title takes the first focus, so the phone never opens the date picker / keyboard by itself
+  $('#modalContent').innerHTML = `<h3 class="modaltitle" tabindex="-1" autofocus>${title}</h3>${body}<div class="formerror" role="alert" hidden></div>`;
   const saveBtn = $('#modalSave');
   saveBtn.textContent = saveLabel;
   saveBtn.hidden = readOnly;
@@ -119,8 +120,10 @@ export function openModal({ title, body, saveLabel = 'સેવ કરો', onSu
     $('#modalCancel').onclick = (e) => { e.preventDefault(); dlg.close(); resolve(null); };
     dlg.oncancel = () => resolve(null);
     dlg.showModal();
+    $('.modaltitle', form)?.focus({ preventScroll: true });
     if (onOpen) onOpen(form);
-    const first = $('input:not([type=hidden]):not([readonly]),select,textarea', form);
+    // computer screens: cursor in the first box (never a date box). Phones: nothing opens until tapped.
+    const first = $('input:not([type=hidden]):not([readonly]):not([type=date]),select,textarea', form);
     if (first && window.matchMedia('(min-width: 700px)').matches) first.focus();
   });
 }
