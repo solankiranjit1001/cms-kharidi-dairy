@@ -24,7 +24,8 @@ function personRow(c) {
 export async function messageDialog(type, id, { auto = false } = {}) {
   const m = await get(`/messages/${type}/${id}`);
   const autoPeople = m.contacts.filter((c) => c.auto_send);
-  if (auto && !autoPeople.length) return null;
+  // v9.1: when automatic messages are on, open for every vepari who has at least one mobile number
+  if (auto && !m.contacts.length) return null;
   const others = m.contacts.filter((c) => !c.auto_send);
   let wantContacts = false;
   const people = m.contacts.length
@@ -126,7 +127,8 @@ export async function contactsDialog(traderId, traderName = '') {
 
 /** Owner: automatic messages on/off, which entries, and the name at the end of each message. */
 export async function settingsDialog() {
-  const s = state.meta.messages || {};
+  // v9.1: read the saved settings fresh, so an old copy on this phone never overwrites them
+  const s = await get('/messages/settings').catch(() => state.meta.messages || {});
   const tick = (name, label, on) => `<label class="paidtick"><input type="checkbox" name="${name}"${on ? ' checked' : ''}> ${label}</label>`;
   const out = await openModal({
     title: '📩 વેપારીને મેસેજ — સેટિંગ',
