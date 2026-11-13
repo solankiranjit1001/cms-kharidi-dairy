@@ -9,6 +9,7 @@ import * as S from './settings.js';
 import { creditPage, creditActions, resetCredit } from './credit.js';
 import * as M from './messages.js';
 import { homebookPage, homebookActions } from './homebook.js';
+import { analysisPage, analysisActions } from './analysis.js';
 
 const PAGES = {
   home: { label: '🏠 હોમ', render: P.home },
@@ -21,6 +22,7 @@ const PAGES = {
   market: { label: '📊 બજાર', render: P.market },
   plan: { label: '🌅 આવતીકાલ', render: P.plan },
   settings: { label: '⚙️ સેટિંગ્સ', render: S.settings },
+  analysis: { label: '🔮 વિશ્લેષણ', render: analysisPage }, // v11: rates & quantities by month, plan for next year
 };
 
 // ---------- rendering ----------
@@ -172,6 +174,7 @@ const ACTIONS = {
   csv: () => S.csv(),
   ...Object.fromEntries(Object.entries(creditActions).map(([k, fn]) => [k, (el) => fn(el, render)])),
   ...Object.fromEntries(Object.entries(homebookActions).map(([k, fn]) => [k, (el) => fn(el, render)])),
+  ...Object.fromEntries(Object.entries(analysisActions).map(([k, fn]) => [k, (el) => fn(el, render)])),
 };
 
 document.addEventListener('click', async (e) => {

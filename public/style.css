@@ -215,3 +215,12 @@ body.netbusy::before{opacity:1;animation:loadbar 1.2s ease-in-out infinite}
 .hbchips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
 @media (max-width:600px){.hbrow{grid-template-columns:1fr auto}.hbrow .rowactions{grid-column:1/-1;justify-content:flex-end}}
 .hbheads table{min-width:0}
+/* v11: 🔮 વિશ્લેષણ */
+.anbarcell{min-width:90px;width:22%}
+.anbar{height:10px;background:var(--soft);border-radius:99px;overflow:hidden}
+.anbar span{display:block;height:100%;background:var(--amber);border-radius:99px}
+.anbar.green span{background:var(--green)}.anbar.red span{background:var(--red)}.anbar.blue span{background:var(--blue)}
+.antip{border:1px solid var(--line,#e5e7eb);border-radius:12px;padding:10px 12px;margin:0 0 10px;display:grid;gap:5px}
+.antip.now{border-color:var(--red);border-width:2px}
+.ancal{border-bottom:1px dashed var(--line,#e5e7eb);padding:8px 0}
+.ancalhead{display:flex;justify-content:space-between;gap:8px;margin-bottom:3px}
