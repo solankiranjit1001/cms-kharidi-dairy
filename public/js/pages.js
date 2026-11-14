@@ -269,10 +269,12 @@ export async function traders(root) {
 
 export async function statementDialog(id) {
   const s = await get(`/traders/${id}/statement`);
-  const body = `<div class="printable"><p>${s.trader.phone ? 'ફોન: ' + esc(s.trader.phone) + ' • ' : ''}શરૂઆતની બાકી: <b>${money(s.trader.opening_balance)}</b></p>
+  // v12: newest entry first, so the current બાકી is shown at the top
+  const body = `<div class="printable"><p class="balance">હાલની બાકી: ${money(s.closing)}</p>
+    <p class="muted small">${s.trader.phone ? 'ફોન: ' + esc(s.trader.phone) + ' • ' : ''}નવી એન્ટ્રી ઉપર • શરૂઆતની બાકી: <b>${money(s.trader.opening_balance)}</b></p>
     ${table(['તારીખ', 'વિગત', '', 'ઉધાર (ખરીદી)', 'જમા (ચુકવણી/પરત)', 'બાકી'],
       s.rows.map((r) => `<tr><td>${gDate(r.d)}</td><td>${esc(r.kind)}</td><td><small>${esc(r.detail || '')}</small></td><td>${Number(r.debit) ? money(r.debit) : ''}</td><td>${Number(r.credit) ? money(r.credit) : ''}</td><td><b>${money(r.balance)}</b></td></tr>`))}
-    <p class="balance">હાલની બાકી: ${money(s.closing)}</p></div>
+    </div>
     <div class="actions noprint"><button type="button" class="btn light" data-print-statement>🖨️ ખાતું પ્રિન્ટ કરો</button></div>`;
   const p = openModal({ title: `📒 ${esc(s.trader.name)} — ખાતાવહી`, body, readOnly: true, wide: true,
     onOpen(form) { $('[data-print-statement]', form).addEventListener('click', () => { document.body.classList.add('print-modal'); window.print(); document.body.classList.remove('print-modal'); }); } });
