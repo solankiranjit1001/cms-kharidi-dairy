@@ -35,8 +35,8 @@ test('ઉધાર: items, total, receipt, delete; paid-up customers are hidden'
   assert.equal(s.total, '300.00'); // 353 + 47 − 100
   let c = (await o.get(`/credit/customers/${cust}`)).data;
   assert.equal(c.entries.length, 3);
-  assert.equal(c.entries[0].lines.length, 2);
-  assert.equal(c.entries.at(-1).balance, '300.00');
+  assert.equal(c.entries.at(-1).lines.length, 2); // v12: newest first, so the first ઉધાર is last
+  assert.equal(c.entries[0].balance, '300.00');
 
   assert.equal((await o.del(`/credit/${del}`)).status, 200);
   s = (await o.get('/credit')).data;
