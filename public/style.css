@@ -224,3 +224,9 @@ body.netbusy::before{opacity:1;animation:loadbar 1.2s ease-in-out infinite}
 .antip.now{border-color:var(--red);border-width:2px}
 .ancal{border-bottom:1px dashed var(--line,#e5e7eb);padding:8px 0}
 .ancalhead{display:flex;justify-content:space-between;gap:8px;margin-bottom:3px}
+/* v12.1: morning darshan splash (3 seconds, first opening each morning) */
+#splash{position:fixed;inset:0;z-index:9999;background:#5b0a0a;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:opacity .6s ease}
+#splash[hidden]{display:none}
+#splash.hide{opacity:0;pointer-events:none}
+#splash .bg{position:absolute;inset:-40px;background:url(/mataji.jpg) center/cover no-repeat;filter:blur(24px) brightness(.55)}
+#splash img{position:relative;width:100%;height:100%;object-fit:contain}

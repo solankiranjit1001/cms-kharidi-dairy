@@ -1,8 +1,8 @@
 // v5: network-first for the app shell (so updates arrive immediately), cache only as an offline fallback.
 // API calls (/api/*) are never cached — financial data always comes live from the server.
-const CACHE = 'cms-kharidi-v12.0';
+const CACHE = 'cms-kharidi-v12.1';
 const SHELL = ['/', '/index.html', '/style.css', '/manifest.webmanifest', '/icon.svg',
-  '/js/main.js', '/js/api.js', '/js/ui.js', '/js/state.js', '/js/forms.js', '/js/pages.js', '/js/reports.js', '/js/settings.js', '/js/market-ref.js', '/js/credit.js', '/js/messages.js', '/js/homebook.js', '/js/analysis.js'];
+  '/js/main.js', '/js/api.js', '/js/ui.js', '/js/state.js', '/js/forms.js', '/js/pages.js', '/js/reports.js', '/js/settings.js', '/js/market-ref.js', '/js/credit.js', '/js/messages.js', '/js/homebook.js', '/js/analysis.js', '/js/splash.js', '/mataji.jpg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
