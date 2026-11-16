@@ -1,0 +1,83 @@
+# Daily backup of the Neon (production) database to Backblaze B2.
+# Runs every night at 23:45 IST and can also be started by hand (Actions → Daily backup → Run workflow).
+# Needs these repository secrets (Settings → Secrets and variables → Actions):
+#   NEON_DATABASE_URL  – Neon connection string (direct / unpooled) of the production branch
+#   B2_KEY_ID          – Backblaze application key ID
+#   B2_APP_KEY         – Backblaze application key
+#   B2_BUCKET          – Backblaze bucket name
+#   B2_ENDPOINT        – Backblaze S3 endpoint, e.g. s3.us-west-004.backblazeb2.com
+name: Daily backup
+
+on:
+  schedule:
+    - cron: '15 18 * * *'   # 18:15 UTC = 23:45 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check secrets
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APP_KEY: ${{ secrets.B2_APP_KEY }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+        run: |
+          missing=0
+          for v in NEON_DATABASE_URL B2_KEY_ID B2_APP_KEY B2_BUCKET B2_ENDPOINT; do
+            if [ -z "${!v}" ]; then echo "::error::Secret $v is not set"; missing=1; fi
+          done
+          exit $missing
+
+      - name: Install PostgreSQL 18 client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-18
+          /usr/lib/postgresql/18/bin/pg_dump --version
+
+      - name: Dump database
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          STAMP=$(TZ=Asia/Kolkata date +%Y-%m-%d_%H%M)
+          FILE="kharidi-diary_${STAMP}.dump"
+          /usr/lib/postgresql/18/bin/pg_dump "$NEON_DATABASE_URL" \
+            --format=custom --compress=9 --no-owner --no-privileges --file="$FILE"
+          # Make sure the file is a real, readable backup before uploading it.
+          /usr/lib/postgresql/18/bin/pg_restore --list "$FILE" > toc.txt
+          TABLES=$(grep -c ' TABLE DATA ' toc.txt || true)
+          SIZE=$(stat -c %s "$FILE")
+          echo "Backup $FILE: $SIZE bytes, $TABLES tables with data"
+          if [ "$TABLES" -lt 5 ]; then echo "::error::Backup looks empty ($TABLES tables)"; exit 1; fi
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+
+      - name: Upload to Backblaze B2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_APP_KEY }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        run: |
+          set -euo pipefail
+          HOST="${B2_ENDPOINT#https://}"; HOST="${HOST%/}"
+          export AWS_DEFAULT_REGION=$(echo "$HOST" | cut -d. -f2)   # s3.<region>.backblazeb2.com
+          YEAR_MONTH=$(TZ=Asia/Kolkata date +%Y-%m)
+          aws s3 cp "$FILE" "s3://$B2_BUCKET/daily/$YEAR_MONTH/$FILE" \
+            --endpoint-url "https://$HOST" --only-show-errors
+          aws s3 ls "s3://$B2_BUCKET/daily/$YEAR_MONTH/$FILE" --endpoint-url "https://$HOST"
+          echo "✅ Uploaded daily/$YEAR_MONTH/$FILE" >> "$GITHUB_STEP_SUMMARY"
