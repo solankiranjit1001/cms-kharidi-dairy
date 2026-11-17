@@ -61,7 +61,6 @@ jobs:
           grep -c 'dumping contents of table' dump.log || true
           # Make sure the file is a real, readable backup before uploading it.
           /usr/lib/postgresql/18/bin/pg_restore --list "$FILE" > toc.txt
-          head -30 toc.txt
           TABLES=$(grep -c ' TABLE DATA ' toc.txt || true)
           SIZE=$(stat -c %s "$FILE")
           echo "Backup $FILE: $SIZE bytes, $TABLES tables with data"
@@ -78,13 +77,8 @@ jobs:
           AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
         run: |
           set -euo pipefail
-          echo "Key ID length: ${#AWS_ACCESS_KEY_ID}, key length: ${#AWS_SECRET_ACCESS_KEY}"
           AUTH=$(curl -s -u "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" https://api.backblazeb2.com/b2api/v3/b2_authorize_account)
-          echo "Backblaze key check: $(echo "$AUTH" | jq -c '{ok: (.accountId != null), code, message, bucket: .apiInfo.storageApi.bucketName}')"
-          for ID in 005a92f1153c8e80000000005 005a92f1153c8e80000000007 005a92f1153c8e80000000008 005a92f1153c8e80000000009; do
-            R=$(curl -s -u "$ID:$AWS_SECRET_ACCESS_KEY" https://api.backblazeb2.com/b2api/v3/b2_authorize_account | jq -r 'if .accountId then "MATCH" else .code end')
-            echo "Try $ID -> $R"
-          done
+          if [ "$(echo "$AUTH" | jq -r '.accountId // empty')" = "" ]; then echo "::error::Backblaze key ID and key do not match ($(echo "$AUTH" | jq -r .code))"; exit 1; fi
           aws --version
           HOST="${B2_ENDPOINT#https://}"; HOST="${HOST%/}"
           export AWS_DEFAULT_REGION=$(echo "$HOST" | cut -d. -f2)   # s3.<region>.backblazeb2.com
