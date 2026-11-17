@@ -54,10 +54,14 @@ jobs:
           set -euo pipefail
           STAMP=$(TZ=Asia/Kolkata date +%Y-%m-%d_%H%M)
           FILE="kharidi-diary_${STAMP}.dump"
+          PSQL=/usr/lib/postgresql/18/bin/psql
+          echo "Connected to: $($PSQL "$NEON_DATABASE_URL" -Atc "select current_database()||' as '||current_user||' | tables in public: '||(select count(*) from information_schema.tables where table_schema='public')||' | all user tables: '||(select count(*) from pg_tables where schemaname not in ('pg_catalog','information_schema'))")"
           /usr/lib/postgresql/18/bin/pg_dump "$NEON_DATABASE_URL" \
-            --format=custom --compress=9 --no-owner --no-privileges --file="$FILE"
+            --format=custom --compress=9 --no-owner --no-privileges --verbose --file="$FILE" 2> dump.log || { tail -20 dump.log; exit 1; }
+          grep -c 'dumping contents of table' dump.log || true
           # Make sure the file is a real, readable backup before uploading it.
           /usr/lib/postgresql/18/bin/pg_restore --list "$FILE" > toc.txt
+          head -30 toc.txt
           TABLES=$(grep -c ' TABLE DATA ' toc.txt || true)
           SIZE=$(stat -c %s "$FILE")
           echo "Backup $FILE: $SIZE bytes, $TABLES tables with data"
