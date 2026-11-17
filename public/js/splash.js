@@ -1,14 +1,13 @@
-// v12.1: મોર્નિંગ દર્શન — on the first opening of the app each morning (4 AM–12 noon), show the
+// v12.2: દર્શન — on the first opening of the app each day (any time), on every phone, show the
 // mataji photo full screen for 3 seconds. Runs before the rest of the page is drawn.
 (function () {
   var el = document.getElementById('splash');
   if (!el) return;
   var now = new Date();
   var today = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
-  var hour = now.getHours();
   var seen = null;
   try { seen = localStorage.getItem('cmsSplashDay'); } catch (e) { seen = null; }
-  if (hour < 4 || hour >= 12 || seen === today) { el.remove(); return; }
+  if (seen === today) { el.remove(); return; }
   try { localStorage.setItem('cmsSplashDay', today); } catch (e) { /* private mode: still show once */ }
   el.hidden = false;
   document.documentElement.style.overflow = 'hidden';
