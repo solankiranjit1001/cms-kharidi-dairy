@@ -139,6 +139,8 @@ const ACTIONS = {
   async edit(el) {
     const { type, id } = el.dataset;
     const rec = await get(`/records/${type}/${id}`);
+    const dlg = document.getElementById('modal');
+    if (dlg?.open) dlg.close(); // v12.3: ✏️ pressed inside the khatu dialog — close it before the edit form opens
     return reloadAfter(FORMS[type](rec));
   },
   async void(el) {
@@ -153,7 +155,7 @@ const ACTIONS = {
   closing: () => reloadAfter(P.closingDialog()),
   daysale: () => reloadAfter(P.daySaleDialog()),
   period: (el) => P.periodResult(el),
-  statement: (el) => P.statementDialog(el.dataset.id),
+  statement: (el) => { P.statementDialog(el.dataset.id).catch((e) => toast(e.message, 'err')); }, // not awaited: an ✏️ inside may close it
   'trader-new': () => reloadAfter(P.traderDialog().then(async (r) => { if (r) await reloadMeta(); return r; })),
   async 'trader-edit'(el) {
     const list = await get('/traders');

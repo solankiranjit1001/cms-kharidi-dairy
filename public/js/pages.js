@@ -28,7 +28,8 @@ function head(title, sub = '') {
 // v6 simple accounting: no item-wise selling, no stock counting. Papa types one sales total per day.
 export async function home(root) {
   const pr = periodRange();
-  const h = await get(`/home${qs({ date: state.date, pfrom: pr.from, pto: pr.to })}`);
+  // v12.3: latest payments (any date) with ✏️ so a wrong amount or date can be changed directly
+  const [h, lastPays] = await Promise.all([get(`/home${qs({ date: state.date, pfrom: pr.from, pto: pr.to })}`), get(`/records/payments${qs({ limit: 10 })}`).catch(() => [])]);
   const d = h.dashboard, dayBills = h.day_bills;
   const t = d.totals, y = d.diary;
   const res = Number(y.result);
@@ -60,8 +61,17 @@ export async function home(root) {
       { empty: 'કોઈ વેપારીને ચૂકવવાનું બાકી નથી' })}
       <p class="balance">કુલ બાકી: ${money(d.payable)}</p></div>
   </div>
-  <div class="card"><h3 class="sectiontitle">બાકી બિલ — ${gDate(state.date)}</h3>${billTable(dayBills, { empty: 'આ દિવસનું કોઈ બિલ બાકી નથી', date: false })}</div>`;
+  <div class="card"><h3 class="sectiontitle">બાકી બિલ — ${gDate(state.date)}</h3>${billTable(dayBills, { empty: 'આ દિવસનું કોઈ બિલ બાકી નથી', date: false })}</div>
+  ${lastPayments(lastPays)}`;
   if (h.period && !h.period.error) showPeriod(pr, h.period); else await periodResult();
+}
+
+// v12.3: last 10 payments to vepari (all dates). ✏️ ફેરફાર changes amount / date / vepari directly — no correction entry needed.
+function lastPayments(pays) {
+  if (!pays?.length) return '';
+  return `<div class="card"><h3 class="sectiontitle">છેલ્લી ચુકવણીઓ</h3>
+    <p class="note noprint">ખોટી રકમ કે ખોટી તારીખ લખાઈ ગઈ હોય તો <b>✏️ ફેરફાર</b> દબાવી સીધું સુધારો.</p>
+    ${table(['તારીખ', 'વેપારી', 'રકમ', ''], pays.map((x) => `<tr><td>${gDate(x.entry_date)}</td><td>${esc(x.trader_name)}${x.purchase_id ? ` <small class="muted">બિલ #${x.purchase_id}</small>` : ''}</td><td><b>${money(x.amount)}</b></td><td>${recActions('payments', x)}</td></tr>`))}</div>`;
 }
 
 // ---- period result: this week / this month / from the start / chosen dates (all up to the work date) ----
@@ -272,8 +282,9 @@ export async function statementDialog(id) {
   // v12: newest entry first, so the current બાકી is shown at the top
   const body = `<div class="printable"><p class="balance">હાલની બાકી: ${money(s.closing)}</p>
     <p class="muted small">${s.trader.phone ? 'ફોન: ' + esc(s.trader.phone) + ' • ' : ''}નવી એન્ટ્રી ઉપર • શરૂઆતની બાકી: <b>${money(s.trader.opening_balance)}</b></p>
-    ${table(['તારીખ', 'વિગત', '', 'ઉધાર (ખરીદી)', 'જમા (ચુકવણી/પરત)', 'બાકી'],
-      s.rows.map((r) => `<tr><td>${gDate(r.d)}</td><td>${esc(r.kind)}</td><td><small>${esc(r.detail || '')}</small></td><td>${Number(r.debit) ? money(r.debit) : ''}</td><td>${Number(r.credit) ? money(r.credit) : ''}</td><td><b>${money(r.balance)}</b></td></tr>`))}
+    ${table(['તારીખ', 'વિગત', '', 'ઉધાર (ખરીદી)', 'જમા (ચુકવણી/પરત)', 'બાકી', ''],
+      s.rows.map((r) => `<tr><td>${gDate(r.d)}</td><td>${esc(r.kind)}</td><td><small>${esc(r.detail || '')}</small></td><td>${Number(r.debit) ? money(r.debit) : ''}</td><td>${Number(r.credit) ? money(r.credit) : ''}</td><td><b>${money(r.balance)}</b></td>
+        <td class="noprint">${canWrite() && ['payments', 'purchases', 'returns'].includes(r.type) ? `<button type="button" class="btn light small" data-action="edit" data-type="${r.type}" data-id="${r.id}">✏️ ફેરફાર</button>` : ''}</td></tr>`))}
     </div>
     <div class="actions noprint"><button type="button" class="btn light" data-print-statement>🖨️ ખાતું પ્રિન્ટ કરો</button></div>`;
   const p = openModal({ title: `📒 ${esc(s.trader.name)} — ખાતાવહી`, body, readOnly: true, wide: true,
